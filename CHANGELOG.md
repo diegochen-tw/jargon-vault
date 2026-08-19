@@ -27,6 +27,15 @@ The version number lives in `app/config.py` (`APP_VERSION`) and is shown in
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pytest` works again when invoked as `pytest`.** `pytest.ini` had no
+  `pythonpath`, so only `python -m pytest` (which puts the working directory on
+  `sys.path`) could import `app`; the bare `pytest` that both the README and CI
+  tell you to run died in `tests/conftest.py` with
+  `ModuleNotFoundError: No module named 'app'`. It went unnoticed because this
+  project had never run its CI — the GitHub remote did not exist until 0.9.0.
+
 ## [0.9.0] - 2026-08-19
 
 Team vaults are gone; public notebooks take their place. The whole
