@@ -71,10 +71,16 @@ def db(paths: VaultPaths) -> sqlite3.Connection:
 
     壞檔自我修復照抄 indexer.rebuild_index():探測一下,DatabaseError 就砍掉重建。
     理由一模一樣——它是快取,而且一個人的壞檔不該變成別人的 500。
+
+    ⚠ 探測語句**必須讀到資料庫檔頭**,`SELECT 1` 不行:它不需要碰檔案,舊版
+    SQLite 直接回答,探測形同虛設,例外會拖到 try 區塊外的 executescript 才爆,
+    自我修復整個失效。實測 SQLite 3.46(CI 的 Python 3.12)不拋、3.50 才拋——
+    也就是這個 bug 會不會現形,取決於執行環境的 SQLite 版本。
+    `PRAGMA schema_version` 一定會讀 header,兩個版本都拋。
     """
     conn = sqlite3.connect(paths.vectors_path)
     try:
-        conn.execute("SELECT 1").fetchone()
+        conn.execute("PRAGMA schema_version").fetchone()
     except sqlite3.DatabaseError:
         try:
             conn.close()

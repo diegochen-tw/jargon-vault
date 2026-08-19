@@ -253,3 +253,24 @@ def test_name_hit_sorts_before_description_only_hit(paths):
         _note("name-hit", "quicksort", updated=NOW - 100),
     )
     assert [r["id"] for r in search_notes(paths, "quicksort", [])] == ["name-hit", "desc-hit"]
+
+
+# ── 壞檔 ────────────────────────────────────────────────────────────
+
+def test_a_corrupt_index_is_deleted_and_rebuilt(paths):
+    """⚠ 這支守的是「單一使用者的壞檔不能讓全站起不來」。
+
+    rebuild_index() 在 create_app() 的初始化迴圈裡對每個使用者跑一次,所以它
+    一旦對壞檔拋例外,受害的不是那個人而是**所有人**——而且因為連啟動都失敗,
+    也看不出是誰的檔壞掉。
+
+    這條防線曾經是假的:探測語句寫 `SELECT 1`,而它不需要讀資料庫檔頭,
+    SQLite 3.46(CI 用的 Python 3.12)直接回答、例外拖到後面的 executescript
+    才拋;開發機的 3.50 才會在探測當下拋,於是本機永遠看起來是好的。
+    測試在此不指定探測語句,只斷言行為,但它的價值就在於跨 SQLite 版本都要成立。
+    """
+    _seed(paths, _note("n1", "quicksort"))
+    paths.db_path.write_bytes(b"this is not a sqlite database at all")
+
+    rebuild_index(paths)                                    # 不拋例外
+    assert [r["id"] for r in search_notes(paths, "quicksort", [])] == ["n1"]

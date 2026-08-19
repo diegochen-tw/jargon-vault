@@ -54,10 +54,16 @@ def rebuild_index(paths: VaultPaths) -> None:
     可拋棄快取,真相在 .md 檔裡,砍掉重建不會損失任何資料。⚠ 沒有這一層的話,
     單一使用者的壞檔會讓 create_app() 的初始化迴圈整個拋例外——**全站所有人
     都啟動不了**,而且因為連啟動都失敗,也沒機會看出是誰的檔壞掉。
+
+    ⚠ 探測語句**必須讀到資料庫檔頭**,`SELECT 1` 不行:它不需要碰檔案,舊版
+    SQLite 直接回答,於是壞檔一路溜過這一關,例外改在下面的 executescript 拋出,
+    上面那段「全站啟動不了」的災難就真的會發生。實測 SQLite 3.46(CI 的
+    Python 3.12)不拋、3.50 才拋,所以這個防線會不會生效取決於部署環境的
+    SQLite 版本——正是最不該靠運氣的地方。`PRAGMA schema_version` 一定讀 header。
     """
     try:
         conn = db(paths)
-        conn.execute("SELECT 1").fetchone()
+        conn.execute("PRAGMA schema_version").fetchone()
     except sqlite3.DatabaseError:
         try:
             conn.close()

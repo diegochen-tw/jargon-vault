@@ -11,7 +11,7 @@
 # ⚠ 這兩個檔的 ports / env_file / volumes / restart 是重複的;改了一邊記得改另一邊。
 services:
   app:
-    # 正式使用建議釘死版本,例如:GV_VERSION=0.9.1 docker compose -f docker-compose.ghcr.yml up -d
+    # 正式使用建議釘死版本,例如:GV_VERSION=0.9.2 docker compose -f docker-compose.ghcr.yml up -d
     image: ghcr.io/diegochen-tw/jargon-vault:${GV_VERSION:-latest}
     container_name: jargon-vault
     # 對外埠可用 HOST_PORT 覆寫(容器內固定 8787)。

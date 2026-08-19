@@ -27,6 +27,26 @@ The version number lives in `app/config.py` (`APP_VERSION`) and is shown in
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-08-20
+
+### Fixed
+
+- **Corrupt-database self-healing actually works now.** Both the search index
+  (`app/indexer.py`) and the vector store (`app/vectors.py`) probe their SQLite
+  file on open and rebuild it from scratch if it is damaged. The probe was
+  `SELECT 1`, which never reads the database header — so on SQLite 3.46 (what
+  Python 3.12 ships, and what most Linux distributions carry) a corrupt file
+  sailed straight through it and blew up later, outside the guarded block.
+  The probe is now `PRAGMA schema_version`, which always reads the header.
+
+  This mattered most for the search index: `rebuild_index()` runs for every
+  user inside `create_app()`, so one damaged `index.db` took **the whole site**
+  down at startup — the exact disaster its own comment says it exists to
+  prevent. Whether the guard worked came down to which SQLite the host
+  happened to have; development machines with 3.50 always looked fine.
+  `tests/test_indexer_search.py` now guards it (only the vector store had a
+  test for this), and both were verified against SQLite 3.46 in a container.
+
 ## [0.9.1] - 2026-08-20
 
 ### Fixed
@@ -194,6 +214,7 @@ This entry describes the feature set as of 0.7.0 rather than replaying the commi
 - **Docker images** for `linux/amd64` and `linux/arm64` on
   `ghcr.io/diegochen-tw/jargon-vault`, plus a documented Synology NAS deployment.
 
-[Unreleased]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/diegochen-tw/jargon-vault/releases/tag/v0.9.0
