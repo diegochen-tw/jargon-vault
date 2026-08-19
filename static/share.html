@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 後端已送 X-Robots-Tag,這裡再放一次 meta:有些爬蟲只看得到 meta。 -->
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Jargon Vault</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/main.css?v=20260820a">
+</head>
+<!--
+  單筆名詞的公開分享頁——**刻意是獨立的一頁**,不重用 index.html。
+
+  1. app.js 的 boot 第一件事是 GET /api/auth/me,未登入就顯示登入畫面。要重用
+     就得在唯一的組裝根塞一個「網址是 /s/… 就走另一條路」的分支,而且登入畫面
+     還有機會閃一下才被換掉。
+  2. index.html 會拉進 sidebar/list/editor/settings/dedup/select 等二十來個模組。
+     給一個沒有帳號、可能用手機開的人載整套後台不合理。
+  3. 攻擊面:這一頁的 DOM 與 JS 都小到可以一眼看完「它絕不會呼叫任何需登入的
+     API」。重用的話,將來任何人在某個 view 加一句「未登入也顯示某某」,這頁就
+     默默變成跳板。
+
+  代價可控:渲染器**不重寫**,share.js 直接 import markdown.js 的 mdFull。
+  ⚠ 絕對不要為這頁複製一份 markdown 渲染——兩份一定會漂移,而說明欄的自訂語法
+  (圍籬程式碼、{{color:}} 畫重點)正是最容易漂的東西。
+-->
+<body class="share-page">
+<main class="share-wrap">
+  <div class="share-card" id="shareCard" style="display:none">
+    <div class="modal-box">
+      <div id="shareBody"></div>
+    </div>
+  </div>
+  <div class="share-missing" id="shareMissing" style="display:none">
+    <h1>Jargon Vault</h1>
+    <p data-i18n="sharepage.notFound">找不到這個分享連結。它可能已被撤銷,或原本的內容已經刪除。</p>
+  </div>
+  <footer class="share-foot" id="shareFoot" style="display:none">
+    <span data-i18n="sharepage.footer">由 Jargon Vault 分享</span>
+  </footer>
+</main>
+<script type="module" src="/static/js/share.js?v=20260820a"></script>
+</body>
+</html>

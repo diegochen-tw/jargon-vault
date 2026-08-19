@@ -1,0 +1,4 @@
+-r requirements.txt
+# Test tooling, pinned the same way as requirements.txt.
+pytest>=9.1,<10.0
+pytest-cov>=7.1,<8.0

@@ -1,0 +1,27 @@
+# 從原始碼 build(開發,或已經 clone 了整包的人)。
+# 只想直接跑、不想 build 的話請改用同目錄的 docker-compose.ghcr.yml —— 它拉
+# ghcr.io 上已發佈的 multi-arch image,不需要原始碼。兩檔的 volume 名稱刻意
+# 相同(gv-data),所以在 build 與 pull 之間切換不會弄丟資料。
+# ⚠ 刻意不把 image: 改成遠端位址再加 build: —— 同時給兩者時,`docker compose up`
+#    到底 pull 還是 build 取決於本地 cache 與 Compose 版本對 pull_policy 預設值的
+#    解讀,同一條指令在不同機器會做不同的事;而部署目標(Synology Container
+#    Manager)剛好就是跑舊版 Compose 的環境。scripts/reset.sh|ps1 也依賴 --build。
+services:
+  app:
+    build: .
+    image: jargon-vault
+    container_name: jargon-vault
+    # 對外埠可用 HOST_PORT 覆寫(容器內固定 8787)。例:HOST_PORT=9000 docker compose up -d
+    ports:
+      - "${HOST_PORT:-8787}:8787"
+    # 用短格式(字串清單)才相容較舊的 Compose(如 Synology Container Manager)。
+    # 注意:短格式要求 .env.docker 一定要存在 → 先 cp .env.docker.example .env.docker
+    env_file:
+      - .env.docker
+    # 具名 volume 存放所有使用者資料 / 索引 / session 金鑰;一鍵重置就是清掉它。
+    volumes:
+      - gv-data:/data
+    restart: unless-stopped
+
+volumes:
+  gv-data:

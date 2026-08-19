@@ -1,0 +1,79 @@
+{
+  "manifest_version": 1,
+  "id": "mba-term",
+  "version": "1.0.0",
+  "category": "field-template",
+  "name": {
+    "zh-Hant": "MBA 管理術語",
+    "zh-Hans": "MBA 管理术语",
+    "en": "MBA / Business Terms",
+    "ja": "MBA・経営用語",
+    "fr": "Termes MBA / gestion",
+    "de": "MBA- & Management-Begriffe",
+    "it": "Termini MBA / gestione",
+    "pt": "Termos de MBA / gestão",
+    "es": "Términos de MBA / gestión",
+    "ko": "MBA 경영 용어",
+    "id": "Istilah MBA / Manajemen",
+    "hi": "MBA प्रबंधन शब्द"
+  },
+  "description": {
+    "zh-Hant": "記錄商管與 MBA 術語:類型、計算公式、出處人物、適用情境、常見誤用。適合把會議裡聽到的框架與指標即時收進庫裡。",
+    "zh-Hans": "记录商管与 MBA 术语:类型、计算公式、出处人物、适用情境、常见误用。适合把会议里听到的框架与指标即时收进库里。",
+    "en": "Capture business and MBA terms: type, formula, originator, when to use, and common misuse. Great for filing frameworks and metrics you hear in meetings.",
+    "ja": "経営・MBA 用語を記録:種類、計算式、提唱者、使いどころ、よくある誤用。会議で耳にしたフレームワークや指標をすぐ収められます。",
+    "fr": "Notez les termes de gestion et MBA : type, formule, auteur, contexte d'usage, mésusages fréquents. Idéal pour classer les cadres et indicateurs entendus en réunion.",
+    "de": "Management- und MBA-Begriffe festhalten: Typ, Formel, Urheber, Einsatzkontext, häufige Fehlanwendung. Ideal für Frameworks und Kennzahlen aus Meetings.",
+    "it": "Registra termini di gestione e MBA: tipo, formula, autore, contesto d'uso, abusi comuni. Ideale per archiviare framework e indicatori sentiti in riunione.",
+    "pt": "Registre termos de gestão e MBA: tipo, fórmula, autor, contexto de uso, maus usos comuns. Ótimo para arquivar frameworks e métricas ouvidos em reuniões.",
+    "es": "Registra términos de gestión y MBA: tipo, fórmula, autor, contexto de uso, malos usos comunes. Ideal para archivar marcos y métricas oídos en reuniones.",
+    "ko": "경영·MBA 용어를 기록: 유형, 계산식, 제안자, 사용 상황, 흔한 오용. 회의에서 들은 프레임워크와 지표를 바로 정리하기 좋습니다.",
+    "id": "Catat istilah manajemen dan MBA: jenis, rumus, pencetus, konteks pemakaian, salah kaprah umum. Cocok untuk menyimpan kerangka dan metrik yang terdengar di rapat.",
+    "hi": "प्रबंधन और MBA शब्द दर्ज करें: प्रकार, सूत्र, प्रवर्तक, उपयोग का संदर्भ, आम दुरुपयोग। बैठकों में सुने फ्रेमवर्क और मेट्रिक्स तुरंत सहेजने के लिए उपयुक्त।"
+  },
+  "template": {
+    "name": "MBA 管理術語",
+    "icon": "📊",
+    "builtin": false,
+    "enabled": true,
+    "ai_input_mode": "name",
+    "ai_prompt": "針對使用者提供的商管/MBA 術語做解釋,對象是有實務經驗、但沒讀過商學院的工作者。\n\ndescription 欄位分兩段,中間空一行:\n第一段(150字以內)用白話說清楚這個概念在回答什麼商業問題,不要用其他行話去解釋行話。\n第二段(150字以內)寫精確定義與適用邊界,並舉一個具體的使用例子。\n\nfields 一律是單行短句,寫不出來就留空,不要硬掰:\n- en_term:英文原文;縮寫附全稱,如「CAGR (Compound Annual Growth Rate)」。\n- term_type:術語類型,框架/指標/策略/財務/行銷/組織擇一為主。\n- formula:指標類才填計算公式,如「ROE = 稅後淨利 ÷ 股東權益」。\n- origin:提出者與年代,如「Michael Porter, 1979」;沒有把握就留空,不要杜撰。\n- usecase:什麼決策場合會用到,如「評估要不要進入新市場」。\n- misuse:最常被誤解或濫用的地方。\n- related:常一起出現或互相對照的概念,可用 [[名詞]] 連結。\n\nkeywords 給三個關鍵字(領域、用途、相關框架)。",
+    "fields": [
+      {
+        "key": "en_term",
+        "label": "英文原文",
+        "placeholder": "縮寫附全稱,如 CAGR (Compound Annual Growth Rate)"
+      },
+      {
+        "key": "term_type",
+        "label": "術語類型",
+        "placeholder": "框架 / 指標 / 策略 / 財務 / 行銷 / 組織,擇一為主"
+      },
+      {
+        "key": "formula",
+        "label": "計算公式",
+        "placeholder": "指標類才填,如 ROE = 稅後淨利 ÷ 股東權益"
+      },
+      {
+        "key": "origin",
+        "label": "出處人物",
+        "placeholder": "提出者與年代,如 Michael Porter, 1979"
+      },
+      {
+        "key": "usecase",
+        "label": "適用情境",
+        "placeholder": "什麼決策場合會用到,如 評估要不要進入新市場"
+      },
+      {
+        "key": "misuse",
+        "label": "常見誤用",
+        "placeholder": "最常被誤解或濫用的地方"
+      },
+      {
+        "key": "related",
+        "label": "相關概念",
+        "placeholder": "常一起出現或對照的概念,可用 [[名詞]] 連結"
+      }
+    ]
+  }
+}

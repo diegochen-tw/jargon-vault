@@ -1,0 +1,31 @@
+# Windows 檔案內容資訊(在檔案總管的「內容 → 詳細資料」看得到)。
+# 版本號的真相來源仍是 app/config.py:APP_VERSION——這裡是複本,
+# 手動與 APP_VERSION 同步,由 tests/test_version.py 的
+# test_packaging_version_matches_app_version 守著,漂掉會讓測試紅燈。
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(0, 9, 0, 0),
+    prodvers=(0, 9, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040404b0',
+        [StringStruct('CompanyName', 'happenlist.com'),
+         StringStruct('FileDescription', 'Jargon Vault — 職場術語筆記'),
+         StringStruct('FileVersion', '0.9.0'),
+         StringStruct('InternalName', 'JargonVault'),
+         StringStruct('LegalCopyright', 'MIT License'),
+         StringStruct('OriginalFilename', 'JargonVault.exe'),
+         StringStruct('ProductName', 'Jargon Vault'),
+         StringStruct('ProductVersion', '0.9.0')])
+    ]),
+    VarFileInfo([VarStruct('Translation', [1028, 1200])])
+  ]
+)

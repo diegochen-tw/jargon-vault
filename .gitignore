@@ -1,0 +1,48 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.log
+
+# Local run helpers (machine-specific)
+run.ps1
+run.sh
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+
+# Docker 本機設定(可能含 GOOGLE 密鑰 / 自訂 demo 密碼);範本 .env.docker.example 進版控
+.env.docker
+
+# All runtime and user data. Nothing under data/ belongs in version control:
+# it holds password hashes, the session-signing key, and every user's private
+# notes/tags/templates/AI settings/search index. Ignore the whole folder so
+# user data can never be committed by accident.
+/data/
+# 開發用的隔離沙箱資料目錄(.claude/launch.json 的 jargon-vault-sandbox* 設定)
+/data-sandbox/
+/data-sandbox2/
+
+# PyInstaller 桌面版打包的產物。dist/ 裡是幾十 MB 的執行檔與 zip,
+# 屬於「可重新產生」的第三類資料(見 CLAUDE.md),發佈走 GitHub Releases,不進版控。
+/dist/
+/build/
+JargonVault-*.zip
+
+# Old export artifacts from a former desktop-companion build (not used by the app)
+term-vault.zip
+專案*.zip
+support.js
+*.dc.html
+.thumbnail
+
+# Local / editor
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+
+# MCP server local login settings (email/password or session cookie — never commit)
+mcp_server/.env

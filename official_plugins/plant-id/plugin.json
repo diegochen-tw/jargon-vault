@@ -1,0 +1,89 @@
+{
+  "manifest_version": 1,
+  "id": "plant-id",
+  "version": "1.0.0",
+  "category": "field-template",
+  "name": {
+    "zh-Hant": "植物辨識",
+    "zh-Hans": "植物识别",
+    "en": "Plant identification",
+    "ja": "植物の同定",
+    "fr": "Identification des plantes",
+    "de": "Pflanzenbestimmung",
+    "it": "Identificazione delle piante",
+    "pt": "Identificação de plantas",
+    "es": "Identificación de plantas",
+    "ko": "식물 식별",
+    "id": "Identifikasi tanaman",
+    "hi": "पौधे की पहचान"
+  },
+  "description": {
+    "zh-Hant": "把看到的植物收成名詞:AI 先寫怎麼認(葉、花、莖的可見特徵,以及最容易搞混的那幾種差在哪),再寫分類、生態習性與觀賞、藥用、食用或民俗用途。欄位有學名、科屬、俗名、別名、異名、原生地、花期、棲地與毒性。安裝後加入欄位樣板清單,欄位與 AI 指示都可自行調整。",
+    "zh-Hans": "把看到的植物收成名词:AI 先写怎么认(叶、花、茎的可见特征,以及最容易搞混的那几种差在哪),再写分类、生态习性与观赏、药用、食用或民俗用途。字段有学名、科属、俗名、别名、异名、原生地、花期、栖地与毒性。安装后加入字段模板列表,字段与 AI 指示都可自行调整。",
+    "en": "Turn the plants you meet into entries: AI first writes how to recognize it — visible features of leaves, flowers and stems, and how it differs from the plants most easily confused with it — then taxonomy, ecology and habits, plus ornamental, medicinal, culinary or folk uses. Fields cover scientific name, taxon, common and folk names, synonyms, native range, bloom season, habitat and toxicity. Installs as a field template; fields and the AI prompt are fully editable.",
+    "ja": "出会った植物を項目として集めます。AI はまず見分け方(葉・花・茎の見える特徴と、間違えやすい種との違い)を書き、続いて分類・生態と習性、観賞・薬用・食用・民俗的な用途を書きます。フィールドは学名・科属・和名・別名・異名・原産地・花期・生育環境・毒性。インストールするとフィールドテンプレートに追加され、フィールドと AI 指示は自由に調整できます。",
+    "fr": "Transformez les plantes rencontrées en fiches : l'IA écrit d'abord comment la reconnaître — caractères visibles des feuilles, fleurs et tiges, et différences avec les espèces les plus faciles à confondre — puis la taxonomie, l'écologie et les usages ornementaux, médicinaux, culinaires ou populaires. Champs : nom scientifique, taxon, noms communs et vernaculaires, synonymes, aire d'origine, floraison, habitat et toxicité. S'installe comme modèle de champs ; champs et instructions IA restent modifiables.",
+    "de": "Machen Sie aus begegneten Pflanzen Einträge: Die KI schreibt zuerst, woran man sie erkennt — sichtbare Merkmale von Blättern, Blüten und Stängeln und die Unterschiede zu den am leichtesten verwechselten Arten —, dann Systematik, Ökologie und Nutzung als Zier-, Heil-, Küchen- oder Volkspflanze. Felder: wissenschaftlicher Name, Taxon, Trivial- und Volksnamen, Synonyme, Herkunft, Blütezeit, Standort und Giftigkeit. Wird als Feldvorlage installiert; Felder und KI-Anweisung sind frei anpassbar.",
+    "it": "Trasforma in voci le piante che incontri: l'IA scrive prima come riconoscerla — caratteri visibili di foglie, fiori e fusto, e in cosa differisce dalle specie più facili da confondere — poi tassonomia, ecologia e abitudini, con usi ornamentali, medicinali, culinari o popolari. Campi: nome scientifico, taxon, nomi comuni e popolari, sinonimi, areale d'origine, fioritura, habitat e tossicità. Si installa come modello di campi; campi e istruzioni IA restano modificabili.",
+    "pt": "Transforme em verbetes as plantas que encontrar: a IA escreve primeiro como reconhecê-la — características visíveis de folhas, flores e caules, e como difere das espécies mais fáceis de confundir — depois taxonomia, ecologia e hábitos, além de usos ornamentais, medicinais, culinários ou populares. Campos: nome científico, táxon, nomes comuns e populares, sinônimos, área de origem, floração, habitat e toxicidade. Instala-se como modelo de campos; campos e instruções de IA são editáveis.",
+    "es": "Convierte en fichas las plantas que encuentres: la IA escribe primero cómo reconocerla — rasgos visibles de hojas, flores y tallos, y en qué se diferencia de las especies más fáciles de confundir — y después taxonomía, ecología y costumbres, junto con usos ornamentales, medicinales, culinarios o populares. Campos: nombre científico, taxón, nombres comunes y populares, sinónimos, área de origen, floración, hábitat y toxicidad. Se instala como plantilla de campos; los campos y las instrucciones de IA son editables.",
+    "ko": "마주친 식물을 항목으로 모읍니다. AI가 먼저 알아보는 법(잎·꽃·줄기의 눈에 보이는 특징과, 가장 헷갈리는 종과의 차이)을 쓰고, 이어서 분류·생태와 습성, 관상·약용·식용·민속적 쓰임을 씁니다. 필드는 학명·과속·통칭·별칭·이명·원산지·개화기·서식지·독성입니다. 설치하면 필드 템플릿 목록에 추가되며 필드와 AI 지시를 자유롭게 조정할 수 있습니다.",
+    "id": "Ubah tanaman yang Anda temui menjadi entri: AI lebih dulu menulis cara mengenalinya — ciri daun, bunga, dan batang yang terlihat, serta bedanya dengan jenis yang paling mudah tertukar — lalu taksonomi, ekologi dan kebiasaannya, ditambah kegunaan hias, obat, kuliner, atau tradisional. Kolomnya: nama ilmiah, takson, nama umum dan lokal, sinonim, daerah asal, musim berbunga, habitat, dan toksisitas. Terpasang sebagai templat kolom; kolom dan instruksi AI dapat disesuaikan.",
+    "hi": "जिन पौधों से आप मिलते हैं उन्हें प्रविष्टियों में बदलें: AI पहले पहचानने का तरीक़ा लिखता है — पत्ती, फूल और तने के दिखने वाले लक्षण, और जिन प्रजातियों से सबसे ज़्यादा भ्रम होता है उनसे अंतर — फिर वर्गीकरण, पारिस्थितिकी और स्वभाव, साथ ही सजावटी, औषधीय, पाककला या लोक उपयोग। फ़ील्ड हैं वैज्ञानिक नाम, वंश-कुल, प्रचलित और लोकनाम, पर्यायवाची, मूल क्षेत्र, पुष्पकाल, आवास और विषाक्तता। फ़ील्ड टेम्पलेट के रूप में इंस्टॉल होता है; फ़ील्ड और AI निर्देश समायोज्य हैं।"
+  },
+  "template": {
+    "name": "Plant identification",
+    "icon": "🌿",
+    "builtin": false,
+    "enabled": true,
+    "ai_input_mode": "name",
+    "ai_prompt": "Explain how to identify the plant named by the user, for ordinary people who want to recognize it in the wild or in a garden.\n\nThe description field has two paragraphs separated by a blank line:\nParagraph 1 (under 150 words): how to recognize it, in plain language — visible features of leaves, flowers and stems, and how it differs from the plants most easily confused with it.\nParagraph 2 (under 150 words): taxonomy, ecology and habits, and ornamental, medicinal, culinary or folk uses.\n\nfields are single-line phrases; leave blank when unsure — never fabricate scientific names:\n- scientific_name: scientific name in Latin binomial form, e.g. \"Crinum asiaticum\".\n- taxon: family and genus, e.g. \"Amaryllidaceae, Crinum\".\n- common_name: the name in everyday use.\n- alias: regional or folk names.\n- synonymy: taxonomic synonyms — other scientific names this species has had.\n- native: native range and current distribution.\n- bloom: flowering season, in months.\n- habitat: habitat, e.g. \"coastal sand\", \"low-elevation forest edges\".\n- toxicity: toxicity or edibility; if toxic, state which parts and what symptoms; leave blank if unknown.\n\nkeywords: three keywords (e.g. family, life form, use or identifying feature).",
+    "fields": [
+      {
+        "key": "scientific_name",
+        "label": "Scientific name",
+        "placeholder": "Latin binomial, e.g. Crinum asiaticum"
+      },
+      {
+        "key": "taxon",
+        "label": "Taxon",
+        "placeholder": "Family and genus, e.g. Amaryllidaceae, Crinum"
+      },
+      {
+        "key": "common_name",
+        "label": "Common name",
+        "placeholder": "The name in everyday use"
+      },
+      {
+        "key": "alias",
+        "label": "Folk names",
+        "placeholder": "Regional or folk names"
+      },
+      {
+        "key": "synonymy",
+        "label": "Synonyms",
+        "placeholder": "Other scientific names this species has had"
+      },
+      {
+        "key": "native",
+        "label": "Native range",
+        "placeholder": "Native range and current distribution"
+      },
+      {
+        "key": "bloom",
+        "label": "Bloom season",
+        "placeholder": "In months, e.g. June–September"
+      },
+      {
+        "key": "habitat",
+        "label": "Habitat",
+        "placeholder": "e.g. coastal sand, low-elevation forest edges"
+      },
+      {
+        "key": "toxicity",
+        "label": "Toxicity / edibility",
+        "placeholder": "If toxic, state parts and symptoms; note if edible"
+      }
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 後端已送 X-Robots-Tag,這裡再放一次 meta:有些爬蟲只看得到 meta。 -->
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Jargon Vault</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/main.css?v=20260820a">
+</head>
+<!--
+  公開筆記快照頁(/p/<pid>)——比照 share.html **刻意是獨立的一頁**,不重用
+  index.html(理由見 share.html 檔頭那三條:登入探測、二十個模組、攻擊面)。
+
+  這一頁的使用者**沒有帳號**,所以只准打一支端點:GET /api/p/<pid>。
+  渲染共用 pubview.js(它 import markdown.js 的 mdFull,flat 模式)——
+  絕不複製第二份渲染器。下載鈕是純 <a href=".../export.zip">,零 JS。
+-->
+<body class="share-page">
+<main class="share-wrap">
+  <div class="share-card" id="pubCard" style="display:none">
+    <div class="modal-box">
+      <div id="pubHead"></div>
+      <div id="pubList"></div>
+      <div id="pubBody" style="display:none"></div>
+    </div>
+  </div>
+  <div class="share-missing" id="pubMissing" style="display:none">
+    <h1>Jargon Vault</h1>
+    <p data-i18n="pubpage.notFound">找不到這份公開筆記。它可能已被撤下。</p>
+  </div>
+  <footer class="share-foot" id="pubFoot" style="display:none">
+    <span data-i18n="pubpage.footer">由 Jargon Vault 發佈 · 下載匯出檔即可匯入自己的 Jargon Vault 接手維護</span>
+  </footer>
+</main>
+<script type="module" src="/static/js/publish.js?v=20260820a"></script>
+</body>
+</html>

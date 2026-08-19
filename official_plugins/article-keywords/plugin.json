@@ -1,0 +1,37 @@
+{
+  "manifest_version": 1,
+  "id": "article-keywords",
+  "version": "1.0.0",
+  "category": "ai-tool",
+  "name": {
+    "zh-Hant": "文章多選批次生成(需AI)",
+    "zh-Hans": "文章多选批量生成(需AI)",
+    "en": "Article Multi-select Batch Generate (AI required)",
+    "ja": "記事から複数選択して一括生成(AI必須)",
+    "fr": "Génération par lot multi-sélection d'article (IA requise)",
+    "de": "Artikel-Mehrfachauswahl-Stapelgenerierung (KI erforderlich)",
+    "it": "Generazione in blocco multi-selezione da articolo (IA richiesta)",
+    "pt": "Geração em lote por multisseleção de artigo (requer IA)",
+    "es": "Generación por lotes con multiselección de artículo (requiere IA)",
+    "ko": "기사 다중 선택 일괄 생성(AI 필요)",
+    "id": "Pembuatan Massal Multi-pilih dari Artikel (perlu AI)",
+    "hi": "लेख बहु-चयन बैच जनरेशन (AI आवश्यक)"
+  },
+  "description": {
+    "zh-Hant": "貼上一篇文章、標註不懂的名詞,AI 逐名詞批次生成到預設樣板。安裝後,新建名詞的樣板選單會出現「文章多選批次生成(需AI)」入口(需啟用 AI 生成)。",
+    "zh-Hans": "粘贴一篇文章、标注不懂的名词,AI 逐名词批量生成到默认模板。安装后,新建名词的模板菜单会出现“文章多选批量生成(需AI)”入口(需启用 AI 生成)。",
+    "en": "Paste an article, mark unfamiliar terms, and AI batch-generates an entry for each into the default template. Once installed, an “Article Multi-select Batch Generate (AI required)” entry appears in the template menu when creating a note (AI generation must be enabled).",
+    "ja": "記事を貼り付けてわからない用語をマークすると、AI が用語ごとにデフォルトテンプレートへ一括生成します。インストール後、新規作成時のテンプレートメニューに「記事から複数選択して一括生成(AI必須)」が表示されます(AI 生成の有効化が必要)。",
+    "fr": "Collez un article, marquez les termes inconnus, et l'IA génère en lot une entrée pour chacun dans le modèle par défaut. Une fois installée, une entrée « Génération par lot multi-sélection d'article (IA requise) » apparaît dans le menu des modèles lors de la création d'une note (la génération IA doit être activée).",
+    "de": "Einen Artikel einfügen, unbekannte Begriffe markieren, und die KI erstellt für jeden Begriff einen Eintrag in der Standardvorlage. Nach der Installation erscheint beim Erstellen einer Notiz im Vorlagenmenü der Eintrag „Artikel-Mehrfachauswahl-Stapelgenerierung (KI erforderlich)“ (KI-Generierung muss aktiviert sein).",
+    "it": "Incolla un articolo, contrassegna i termini sconosciuti e l'IA genera in blocco una voce per ciascuno nel modello predefinito. Una volta installato, appare la voce “Generazione in blocco multi-selezione da articolo (IA richiesta)” nel menu dei modelli durante la creazione di una nota (la generazione IA deve essere abilitata).",
+    "pt": "Cole um artigo, marque termos desconhecidos, e a IA gera em lote um item para cada um no modelo padrão. Após a instalação, aparece a entrada “Geração em lote por multisseleção de artigo (requer IA)” no menu de modelos ao criar uma nota (a geração por IA precisa estar ativada).",
+    "es": "Pega un artículo, marca los términos desconocidos, y la IA genera en lote una entrada para cada uno en la plantilla predeterminada. Una vez instalado, aparece la opción “Generación por lotes con multiselección de artículo (requiere IA)” en el menú de plantillas al crear una nota (la generación por IA debe estar habilitada).",
+    "ko": "기사를 붙여넣고 모르는 용어를 표시하면 AI가 용어마다 기본 템플릿에 일괄 생성합니다. 설치 후 노트를 새로 만들 때 템플릿 메뉴에 “기사 다중 선택 일괄 생성(AI 필요)” 항목이 나타납니다(AI 생성이 활성화되어 있어야 합니다).",
+    "id": "Tempel sebuah artikel, tandai istilah yang tidak dikenal, dan AI akan membuat entri secara massal untuk setiap istilah ke templat default. Setelah dipasang, entri “Pembuatan Massal Multi-pilih dari Artikel (perlu AI)” akan muncul di menu templat saat membuat catatan (pembuatan AI harus diaktifkan).",
+    "hi": "एक लेख चिपकाएँ, अनजान शब्दों को चिह्नित करें, और AI हर शब्द के लिए डिफ़ॉल्ट टेम्पलेट में बैच में प्रविष्टि बनाता है। इंस्टॉल के बाद, नोट बनाते समय टेम्पलेट मेनू में “लेख बहु-चयन बैच जनरेशन (AI आवश्यक)” विकल्प दिखाई देगा (AI जनरेशन सक्षम होना चाहिए)।"
+  },
+  "default_config": {
+    "ai_prompt": "使用者會提供一篇技術文章的全文,以及文中一個他不懂的名詞。\n請針對這個名詞做解釋:以文章的脈絡幫助理解,但解釋要能脫離文章獨立閱讀。\nname 欄位:填入該名詞本身(可適度正規化,如補全慣用大小寫)。\ndescription 欄位:先用一段150字以內的白話描述這個東西是什麼,空一行後,再用一段150字以內說明它在這篇文章中扮演的角色。\nfields 盡量填寫:別名(alias,如中英對照)、Synonymy(synonymy,異名同義)、Polysemy(polysemy,一詞多義/同名異義)。\nkeywords 給最精華的三個關鍵字。"
+  }
+}

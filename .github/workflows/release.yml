@@ -1,0 +1,130 @@
+# 發佈:push 一個 v* 的 tag 就 build multi-arch image 推上 ghcr.io,並建立 GitHub Release。
+#
+# 需要的權限都由內建的 GITHUB_TOKEN 提供,不必設定任何 secret。
+# ⚠ 第一次發佈後,要到 GitHub → Packages → jargon-vault → Package settings 把可見性
+#   改成 Public。ghcr 的 package 預設是 private,不改的話任何人 docker pull 都會 401,
+#   README 的快速開始整段失效。
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # 建立 GitHub Release
+  packages: write   # 推到 ghcr.io
+
+env:
+  IMAGE: ghcr.io/diegochen-tw/jargon-vault
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90   # arm64 走 QEMU 模擬,第一次沒有 cache 時會慢
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── 版本對帳:tag / app/config.py / CHANGELOG.md 三者一致才准往下走。 ──
+      # image 一旦推上 ghcr 就沒辦法乾淨地收回,所以擋在 build 之前。
+      # 刻意用 sed 抽版本號而不是 import:app/config.py 只依賴標準函式庫,但
+      # `from app.config import ...` 會先跑 app/__init__.py(需要 fastapi/bcrypt…),
+      # 為了對帳一個字串去裝整包相依不划算。
+      - name: Verify version metadata
+        id: ver
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          CODE="$(sed -n 's/^APP_VERSION = "\(.*\)"$/\1/p' app/config.py)"
+          if [ -z "$CODE" ]; then
+            echo "::error::讀不到 app/config.py 的 APP_VERSION"; exit 1
+          fi
+          if [ "$TAG" != "$CODE" ]; then
+            echo "::error::git tag v$TAG 與 app/config.py 的 APP_VERSION=$CODE 不一致"; exit 1
+          fi
+          if ! grep -qF "## [$TAG]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md 沒有 ## [$TAG] 這一段"; exit 1
+          fi
+          echo "version=$TAG"    >> "$GITHUB_OUTPUT"
+          echo "minor=${TAG%.*}" >> "$GITHUB_OUTPUT"
+          # 兩個旗標刻意分開,不要合成一個(見 CHANGELOG.md 的 Versioning 段):
+          #   prerelease → GitHub Release 上的 "Pre-release" 標記。整個 0.x Beta
+          #     期間都要是 true,那正是 0.x 的意思。
+          #   rc → 只有 1.0.0-rc1 這種帶 hyphen 的候選版才算。它決定 Docker 要不要
+          #     跳過 latest / x.y。⚠ 別拿 prerelease 來決定 Docker tag:0.9.0 是
+          #     Beta 期間唯一存在的版本,不推 latest 會讓 README 的 docker pull 404。
+          case "$TAG" in
+            0.*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *-*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)   echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          case "$TAG" in
+            *-*) echo "rc=true"  >> "$GITHUB_OUTPUT" ;;
+            *)   echo "rc=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # Release 內文直接取 CHANGELOG 該版本那一段,不另外維護一份。
+      # ⚠ 用 index() 逐字比對找標題,不用 regex:"## [1.0.0]" 裡的 [ ] 在 regex 是字元類別。
+      # ⚠ 第二個結束條件是給「最舊的那一版」用的:它後面沒有下一個 ## [ 標題,只剩
+      #    檔案底部的 [1.0.0]: https://… 連結定義區,不擋的話會被一起抓進 Release 內文。
+      - name: Extract release notes from CHANGELOG
+        run: |
+          set -euo pipefail
+          awk -v v="## [${{ steps.ver.outputs.version }}]" '
+            index($0, v) == 1 { f = 1; next }
+            f && index($0, "## [") == 1 { exit }
+            f && /^\[[^]]+\]: / { exit }
+            f { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          test -s RELEASE_NOTES.md || { echo "::error::擷取到空的 release notes"; exit 1; }
+          if grep -qE '^\[[^]]+\]: ' RELEASE_NOTES.md; then
+            echo "::error::release notes 誤含 CHANGELOG 底部的連結定義區"; exit 1
+          fi
+
+      # 候選版(1.0.0-rc1 這種)只打自己那個 tag,不碰 latest / x.y——
+      # 否則 `docker pull …:latest` 的人會被靜默升級到 rc。
+      # ⚠ 用 rc 不是 prerelease:0.x Beta 雖然標著 Pre-release,但它是唯一
+      #   拿得到的版本,latest 必須指到它。
+      - name: Compose image tags
+        id: tags
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          if [ "${{ steps.ver.outputs.rc }}" = "true" ]; then
+            echo "list=$IMAGE:$V" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "list<<EOF"
+              echo "$IMAGE:$V"
+              echo "$IMAGE:${{ steps.ver.outputs.minor }}"
+              echo "$IMAGE:latest"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          # arm64 是給 Synology NAS / Raspberry Pi / Apple Silicon 的,README 有寫 NAS 部署。
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # 少一層 attestation manifest,舊版 Compose / Container Manager 較不易誤判。
+          provenance: false
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.version }}
+          tags: ${{ steps.tags.outputs.list }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.ver.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          prerelease: ${{ steps.ver.outputs.prerelease }}

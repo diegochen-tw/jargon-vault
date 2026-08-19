@@ -1,0 +1,69 @@
+{
+  "manifest_version": 1,
+  "id": "english-word",
+  "version": "1.0.0",
+  "category": "field-template",
+  "name": {
+    "zh-Hant": "英文單字",
+    "zh-Hans": "英文单词",
+    "en": "English word",
+    "ja": "英単語",
+    "fr": "Mot anglais",
+    "de": "Englisches Wort",
+    "it": "Parola inglese",
+    "pt": "Palavra em inglês",
+    "es": "Palabra en inglés",
+    "ko": "영어 단어",
+    "id": "Kata bahasa Inggris",
+    "hi": "अंग्रेज़ी शब्द"
+  },
+  "description": {
+    "zh-Hant": "把單字當名詞收進來:AI 解釋核心語意與典型用法,點出非母語者最常犯的錯,並附上例句與翻譯。欄位有翻譯、詞性、音標、常見搭配與字源。安裝後加入欄位樣板清單,欄位與 AI 指示都可自行調整。",
+    "zh-Hans": "把单词当名词收进来:AI 解释核心语义与典型用法,点出非母语者最常犯的错,并附上例句与翻译。字段有翻译、词性、音标、常见搭配与词源。安装后加入字段模板列表,字段与 AI 指示都可自行调整。",
+    "en": "Collect English words the way you collect terms: AI explains the core meaning and typical usage, points out what non-native speakers most often get wrong, and adds example sentences with translations. Fields cover translation, part of speech, phonetics, collocations and etymology. Installs as a field template; fields and the AI prompt are fully editable.",
+    "ja": "単語を用語と同じように集めます。AI が中心的な意味と典型的な使い方を説明し、非ネイティブが間違えやすい点を指摘し、訳付きの例文を添えます。フィールドは訳語・品詞・発音記号・コロケーション・語源。インストールするとフィールドテンプレートに追加され、フィールドと AI 指示は自由に調整できます。",
+    "fr": "Collectionnez les mots anglais comme vous collectionnez les termes : l'IA explique le sens central et l'usage typique, signale les erreurs les plus fréquentes des non-anglophones et ajoute des phrases d'exemple traduites. Champs : traduction, nature grammaticale, phonétique, collocations et étymologie. S'installe comme modèle de champs ; champs et instructions IA restent modifiables.",
+    "de": "Sammeln Sie englische Wörter wie Fachbegriffe: Die KI erklärt Kernbedeutung und typischen Gebrauch, benennt die häufigsten Fehler von Nicht-Muttersprachlern und ergänzt Beispielsätze mit Übersetzung. Felder: Übersetzung, Wortart, Lautschrift, Kollokationen und Etymologie. Wird als Feldvorlage installiert; Felder und KI-Anweisung sind frei anpassbar.",
+    "it": "Colleziona parole inglesi come collezioni i termini: l'IA spiega il significato centrale e l'uso tipico, segnala gli errori più comuni dei non madrelingua e aggiunge frasi di esempio con traduzione. Campi: traduzione, parte del discorso, fonetica, collocazioni ed etimologia. Si installa come modello di campi; campi e istruzioni IA restano modificabili.",
+    "pt": "Colecione palavras em inglês como coleciona termos: a IA explica o significado central e o uso típico, aponta os erros mais comuns de quem não é nativo e acrescenta frases de exemplo com tradução. Campos: tradução, classe gramatical, fonética, colocações e etimologia. Instala-se como modelo de campos; campos e instruções de IA são editáveis.",
+    "es": "Colecciona palabras en inglés igual que coleccionas términos: la IA explica el significado central y el uso típico, señala los errores más frecuentes de los no nativos y añade frases de ejemplo con traducción. Campos: traducción, categoría gramatical, fonética, colocaciones y etimología. Se instala como plantilla de campos; los campos y las instrucciones de IA son editables.",
+    "ko": "용어를 모으듯 영어 단어를 모읍니다. AI가 핵심 의미와 전형적인 쓰임을 설명하고, 비원어민이 가장 자주 틀리는 지점을 짚어 주며, 번역이 달린 예문을 덧붙입니다. 필드는 번역·품사·발음 기호·연어·어원입니다. 설치하면 필드 템플릿 목록에 추가되며 필드와 AI 지시를 자유롭게 조정할 수 있습니다.",
+    "id": "Kumpulkan kata bahasa Inggris seperti Anda mengumpulkan istilah: AI menjelaskan makna inti dan penggunaan khasnya, menunjukkan kesalahan yang paling sering dibuat penutur non-asli, dan menambahkan kalimat contoh beserta terjemahannya. Kolomnya: terjemahan, kelas kata, fonetik, kolokasi, dan etimologi. Terpasang sebagai templat kolom; kolom dan instruksi AI dapat disesuaikan.",
+    "hi": "जैसे आप शब्दावली जमा करते हैं, वैसे ही अंग्रेज़ी शब्द जमा करें: AI मूल अर्थ और सामान्य प्रयोग समझाता है, ग़ैर-मातृभाषियों की सबसे आम ग़लतियाँ बताता है, और अनुवाद सहित उदाहरण वाक्य जोड़ता है। फ़ील्ड हैं अनुवाद, शब्द-भेद, उच्चारण, सहप्रयोग और व्युत्पत्ति। फ़ील्ड टेम्पलेट के रूप में इंस्टॉल होता है; फ़ील्ड और AI निर्देश समायोज्य हैं।"
+  },
+  "template": {
+    "name": "English word",
+    "icon": "🔤",
+    "builtin": false,
+    "enabled": true,
+    "ai_input_mode": "name",
+    "ai_prompt": "Explain the English word or phrase provided by the user, for a non-native learner.\n\nThe description field (under 150 words): explain the core meaning and typical usage, point out what learners most often get wrong (e.g. differences from near-synonyms, common non-native misuses), and end with one or two English example sentences, each followed by a translation.\n\nfields are single-line phrases:\n- translation: translation in the reader's language; separate senses with semicolons.\n- pos: part of speech, e.g. n. / v. / adj. / phr. v.; list all if multiple.\n- phonetic: phonetic transcription, KK or IPA, written between slashes.\n- collocation: the most common collocations, e.g. \"make a decision\", \"be aware of\".\n- etymology: roots, affixes or word origin as a memory aid; leave blank if unknown.\n\nkeywords: three topical keywords (e.g. semantic field, usage context, difficulty).",
+    "fields": [
+      {
+        "key": "translation",
+        "label": "Translation",
+        "placeholder": "Translation in your language; separate senses with semicolons"
+      },
+      {
+        "key": "pos",
+        "label": "Part of speech",
+        "placeholder": "e.g. n. / v. / adj. / phr. v.; list all if multiple"
+      },
+      {
+        "key": "phonetic",
+        "label": "Phonetic",
+        "placeholder": "KK or IPA, e.g. /dɪˈbaʊns/"
+      },
+      {
+        "key": "collocation",
+        "label": "Collocations",
+        "placeholder": "Most common combinations, e.g. make a decision, be aware of"
+      },
+      {
+        "key": "etymology",
+        "label": "Etymology",
+        "placeholder": "Roots, affixes or origin as a memory aid"
+      }
+    ]
+  }
+}

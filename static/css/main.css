@@ -1,0 +1,1907 @@
+/* 配色以「長時間閱讀舒適」為準:
+   - 淺色不是純白底(純白會反光刺眼),用微暖的紙白;正文不是純黑(降低眩光),
+     用深暖灰。所有正文/強調色對底色都 ≥4.5:1(WCAG AA),faint 是裝飾性小字例外。
+   - 深色不是純黑底(避免光暈/拖影),用帶一點藍的深灰;正文不是純白(≈90% 亮度,
+     減少光暈)。強調色略降飽和、提高亮度,避免在深底上「振動」刺眼。
+   - --on-accent:放在強調色底上的文字色(主要按鈕),兩主題各自確保可讀
+     (淺色白字、深色近黑字;深色若沿用白字對淺藍底只有 ~2.4:1 會看不清)。 */
+:root{
+  color-scheme:light; /* 讓瀏覽器原生元件(select 下拉選單、捲軸…)照淺色主題畫,不是靠猜的 */
+  --bg:#FBFAF7; --surface:#FFFFFF; --surface-2:#F1EFEA; --border:#E6E3DC;
+  --text:#22201C; --muted:#63605A; --faint:#94908A;
+  --amber:#2B5FCE; --green:#1B7A4D; --red:#C23B2E; --on-accent:#FFFFFF;
+  --amber-soft:rgba(43,95,206,.10); /* 強調色的淡色底(SRS 自評「記得」),alpha 疊在 surface 上,變體自動適配 */
+  /* ⚠ 這裡絕不可以出現比例字型(曾經誤把 --sans 的 "Inter" 複製進來)。
+     症狀很隱晦:卡片與詳細頁的程式碼區塊靠瀏覽器預設樣式表的 code{font-family:monospace}
+     直接命中 <code> 元素而僥倖存活,但 .cb-ln / .code-peek-ln 兩個行號欄是純 <pre>
+     沒有 <code> 子節點、編輯器的 .mdcontent code 又明寫 font-family:var(--mono),
+     於是「編輯中是比例字、存檔後變等寬」,而且沒有任何錯誤訊息。 */
+  --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --sans:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --tag-text-c0:#2B5FCE; --tag-text-c1:#217A5B; --tag-text-c2:#A85423;
+  --tag-text-c3:#7A46D6; --tag-text-c4:#2B5FCE; --tag-text-c5:#217A5B;
+  --syn-kw:#7A3FD0;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark; /* 沒有這個,沒特別上色的 <select> 彈出選單在深色主題下會是「系統預設淺色底+繼承的淺色字」,看不清 */
+  --bg:#16181C; --surface:#1D2025; --surface-2:#24272D; --border:#31353C;
+  --text:#E8E9EC; --muted:#A0A6B0; --faint:#6B7280;
+  --amber:#7AA2F7; --green:#5BCE8F; --red:#F0766B; --on-accent:#0E1116;
+  --amber-soft:rgba(122,162,247,.16); /* 深色的 alpha 要略高才看得出來(深底吃掉低透明度) */
+  --tag-text-c0:#7AA2F7; --tag-text-c1:#4FD0A0; --tag-text-c2:#E0A46A;
+  --tag-text-c3:#B48CF2; --tag-text-c4:#7AA2F7; --tag-text-c5:#4FD0A0;
+  --syn-kw:#C9A0F0;
+}
+/* ── 配色變體(設定 → 偏好設定 的色票;theme.js 保證 data-variant 永遠屬於當前
+   data-theme 的模式,所以淺色變體單屬性就安全)。只覆寫底色/文字系,強調色與
+   tag 色沿用所屬模式的值——降低漂移面。color-scheme 與畫重點的深色降透明度
+   (.38→.28)都掛在 :root / [data-theme="dark"],變體自動繼承,不用另寫。
+   色票的預覽色寫死在 theme.js 的 LIGHT_VARIANTS/DARK_VARIANTS,改這裡要同步。 ── */
+:root[data-variant="sepia"]{     /* 紙張:書頁米黃+深棕黑,貼近實體書印刷 */
+  --bg:#F4ECD8; --surface:#FAF3E0; --surface-2:#ECE1C6; --border:#DBCFAE;
+  --text:#332C27; --muted:#6B6153; --faint:#94897A;
+}
+:root[data-variant="white"]{     /* 清爽白:中性灰白+炭灰,高清晰但避開純白反光 */
+  --bg:#FAFAFA; --surface:#FFFFFF; --surface-2:#F0F0F0; --border:#E2E2E2;
+  --text:#1A1A1A; --muted:#5C5C5C; --faint:#8F8F8F;
+}
+:root[data-theme="dark"][data-variant="black"]{  /* 純黑:OLED 省電,文字降亮度防光暈 */
+  --bg:#000000; --surface:#0E0E10; --surface-2:#17171A; --border:#26262B;
+  --text:#C8C8C8; --muted:#8A8A92; --faint:#5A5A62;
+}
+:root[data-theme="dark"][data-variant="navy"]{   /* 冷調深藍:Readwise 風格的深藍黑 */
+  --bg:#0F172A; --surface:#172033; --surface-2:#1E293B; --border:#2C3A52;
+  --text:#E2E8F0; --muted:#94A3B8; --faint:#64748B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+/* 字體縮放機制:全站 font-size 一律用 rem,html 基準字級 × --font-scale 統一縮放。
+   桌機預設 1、手機預設 1.8(字體加大);header 的 A−/A+ 按鈕經 JS 寫 inline
+   --font-scale 覆寫(見 app.js),只縮文字、不動版面 px 間距。 */
+html{font-size:calc(16px * var(--font-scale,1)) !important}  /* !important:防外部注入樣式蓋掉基準字級;縮放本身走 --font-scale 變數,不受影響 */
+/* 「手機條件」= 窄螢幕 或 橫放矮螢幕(手機橫拿)。所有斷點原本只看寬度,手機橫放
+   (寬 ~740-900、高 ~360)會落入桌機規則被壓縮。這個條件在本檔出現三處(字級/
+   lightbox/手機版總成),JS 端的同一把尺是 utils.js 的 NARROW_MQ——改一邊要全改。 */
+@media (max-width:640px),((max-height:500px) and (orientation:landscape)){html{--font-scale:1.8}}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.45;
+  transition:background-color .15s,color .15s;overflow-x:hidden}
+body{font-size:0.875rem}
+html{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;border:2px solid var(--bg);background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+.modal-box::-webkit-scrollbar-thumb{border-color:var(--surface)}
+mark{background:transparent;color:var(--amber);font-weight:700}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit;color:var(--text)}
+::placeholder{color:var(--faint)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+.wrap{max-width:880px;margin:0 auto;padding:40px 20px 90px}
+
+/* ── 登入畫面(未登入時整頁蓋住 .wrap) ── */
+.auth-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.auth-box h1{font-size:1.375rem;font-weight:700;letter-spacing:-.01em}
+.auth-box .sub{font-family:var(--mono);font-size:0.6875rem;color:var(--faint);letter-spacing:.12em;margin-bottom:8px}
+.auth-box form{display:flex;flex-direction:column;gap:10px}
+.auth-box input{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:11px 12px;font-size:0.875rem;color:var(--text)}
+.auth-box .btn.primary{width:100%}
+.auth-box .auth-divider{color:var(--faint);font-size:0.75rem;margin:2px 0}
+.auth-box #authGoogle{display:block;border:1px solid var(--border);border-radius:8px}
+.auth-box .auth-error{color:var(--red);font-size:0.8125rem}
+
+/* ── header:純按鈕列(新建 + 設定/佈景切換/登出 整齊並排靠右;LOGO 已移到側欄) ── */
+header{display:flex;align-items:center;gap:8px;margin-bottom:24px;flex-wrap:wrap;row-gap:10px}
+header .spacer{flex:1;min-width:12px}
+header .btn.icon:hover{border-color:var(--muted);color:var(--text)}
+/* ── 設定選單:一顆 ⚙️ 收納 設定/字體縮放/佈景切換/登出 的下拉 ── */
+.menu-wrap{position:relative}
+.menu{display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:20;
+  min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.14)}
+.menu.show{display:block}
+.menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  background:none;border:none;border-radius:7px;padding:9px 10px;cursor:pointer;
+  color:var(--text);font-size:0.875rem;font-family:inherit}
+.menu-item:hover{background:var(--surface-2)}
+.menu-ic{width:1.25rem;text-align:center;font-size:0.95rem;line-height:1;flex-shrink:0}
+.menu-sep{height:1px;background:var(--border);margin:5px 4px}
+.menu-fontrow{display:flex;align-items:center;gap:8px;padding:7px 10px}
+.menu-font-label{font-size:0.875rem;color:var(--text);white-space:nowrap}
+/* A−/100%/A＋這組的間距要比列內其他 gap 窄,獨立包一層覆寫 */
+.menu-fontctl{display:flex;align-items:center;gap:2px}
+.menu-font-val{font-size:0.8125rem;color:var(--muted);min-width:2.75em;text-align:center;font-variant-numeric:tabular-nums}
+/* ── LOGO(在側欄頂部;點擊清空所有篩選) ── */
+.logo{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  cursor:pointer;margin-bottom:20px}
+.logo h1{font-size:1.25rem;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.logo .sub{font-family:var(--mono);font-size:0.6875rem;color:var(--faint);letter-spacing:.12em;white-space:nowrap}
+.logo:hover h1{color:var(--amber)}
+.btn{background:none;border:none;color:var(--muted);border-radius:8px;padding:9px 12px;font-size:0.8125rem;white-space:nowrap;
+  transition:background-color .15s,color .15s}
+.btn:hover{color:var(--text)}
+/* 描邊按鈕:.btn 預設無框無底,擺在一堆淡色說明文字旁邊時看起來不像可以按的東西
+   (設定 → 標籤管理的「匯出所選」、團隊庫卡片裡的各個動作)。次要動作用這個,
+   主要動作仍用 .primary——三個層級要看得出差別。 */
+.btn.outline{border:1px solid var(--border);color:var(--text);padding:6px 12px}
+.btn.outline:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn.primary{background:var(--amber);color:var(--on-accent);font-weight:600;padding:10px 18px}
+.btn.primary:hover{color:var(--on-accent);opacity:.9}  /* 深色系 --on-accent 是近黑,硬編白字對淺藍底只有 ~2.4:1 */
+.btn.danger{color:var(--red)}
+/* 外部連結有時會用 <a class="btn"> 排進按鈕列(登入畫面的 Google 登入、管理分頁的
+   備份下載、關於本專案的各個連結)。anchor 預設帶底線,而且行高規則跟 <button> 不同
+   (實測 35.55px vs 37px),同一列並排時看得出高低差與底線不一致。這一條只做
+   「讓 anchor 長得跟 button 一樣」,不新增任何視覺樣式。 */
+a.btn{text-decoration:none;line-height:normal}
+
+/* ── 掃描式搜尋列 ── */
+/* top 讀 --demo-banner-h:範例置頂行也是 sticky top:0,兩個都貼頂會疊在一起。
+   變數由 views/demobanner.js 量出實際高度後寫上(換行會讓高度變,resize 重量);
+   沒有橫幅時是 0px,行為與改動前完全相同。 */
+.scanner{position:sticky;top:var(--demo-banner-h,0px);z-index:5;background:var(--bg);padding:2px 0 12px}
+/* 背景圖啟用時(theme.js:applyBackground 掛 gv-hasbg)搜尋列鏤空讓壁紙透出來。
+   目前版面的 sticky 實際上不會置頂,沒有卡片捲到底下疊字的情境;
+   ⚠ 若未來把 scanner 改成真的置頂,這行要一起重新評估(全透明+置頂=疊字)。 */
+body.gv-hasbg .scanner{background:transparent}
+.scanbox{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--border);padding:2px 0}
+.scanbox:focus-within{border-color:var(--amber)}
+/* min-width:0 不能拿掉:flex item 預設 min-width:auto,input 的固有最小寬度
+   (預設 size≈20 字)在手機的 --font-scale 放大後可達 ~450px,會撐爆 .scanbox
+   把右側的語意開關整顆推出視口外——症狀是「語意搜尋 icon 在手機版不見了」。 */
+.scanbox input{flex:1;min-width:0;background:none;border:none;font-size:1.125rem;padding:12px 2px;outline:none}
+.led{display:none}
+.scanbox kbd{font-family:var(--mono);font-size:0.6875rem;color:var(--faint);
+  border:1px solid var(--border);border-radius:5px;padding:2px 7px}
+/* 語意搜尋開關住在搜尋列裡(kbd 右側):它改的是「這次搜尋怎麼找」,跟輸入框
+   是同一件事。flex:none 是必要的——.scanbox 的 input 是 flex:1,不釘住的話
+   這顆會在輸入長字串時被壓扁。 */
+.scanbox .pill-toggle{flex:none}
+.stat{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);margin:12px 2px 0;letter-spacing:.04em;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* 隱藏說明開關 + 瀏覽模式切換,一起靠右(統計文字靠左,space-between 兩端對齊) */
+.stat-right{display:flex;align-items:center;gap:10px}
+/* 開關型按鈕的共用樣式(隱藏說明/複選標籤等):核取方塊太突兀,一律改用跟標籤
+   同款的鏤空樣式(border:1px solid currentColor),啟用時比照 .vmbtn.on 換成
+   amber 強調色,全站同一套視覺語言,不是每個開關各自發明一套。 */
+.pill-toggle{font-family:var(--sans);font-size:0.6875rem;border-radius:999px;
+  padding:2px 10px;border:1px solid var(--border);background:none;color:var(--faint);
+  cursor:pointer;white-space:nowrap}
+.pill-toggle:hover{color:var(--muted);border-color:var(--muted)}
+.pill-toggle.on{color:var(--amber);border-color:var(--amber)}
+/* icon 版的開關(如「只顯示有標記」的書籤):收掉文字版左右較寬的 padding。
+   inline-flex 是為了裡面的 SVG——inline 元素會留 baseline 空隙,膠囊會歪。 */
+.pill-toggle.icon-only{padding:3px 8px;font-size:0.8125rem;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center}
+/* 鏤空書籤圖示(只顯示有標記的篩選開關 + 詳細頁工具列的標記鈕)。
+   inline SVG 是 icon 慣例(emoji/Unicode 字元)的**例外**,只用在統計列這排開關:
+   Unicode 沒有鏤空的書籤/四角星/文件框字形(🔖 是實心彩色 emoji),而「關=鏤空、
+   開=實心」正是這排按鈕要表達的狀態,只有 SVG 的 fill/stroke 做得到。尺寸用 em、
+   顏色用 currentColor,所以 A+/A− 字級縮放與 .on 的 amber 都自動跟著走。
+   ⚠ 掛了 inline SVG 的按鈕一律不能加 data-i18n(applyI18n 寫 textContent 會清掉 SVG),
+   只掛 data-i18n-title。 */
+.bm-ic{width:0.8125em;height:1.0625em;flex:none;fill:none;stroke:currentColor;
+  stroke-width:1.6;stroke-linejoin:round}
+.on .bm-ic{fill:currentColor}
+/* 方形的同款開關圖示:語意搜尋(鏤空四角星 = 智慧模式)與隱藏說明(鏤空文件框 +
+   內文線 = 說明區塊本身)。跟 .bm-ic 只差長寬比,共用同一套 fill/stroke 規則。 */
+.tg-ic{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;
+  stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.on .tg-ic{fill:currentColor}
+/* 說明已隱藏時內文線跟著收掉——框填實之後線壓在同色實心上看不見,留著只會讓
+   邊緣糊掉(stroke 疊 fill 會讓 13px 的方框看起來變胖)。 */
+.on .tg-ic .tg-lines{display:none}
+/* 排序依據:不獨立做選單,直接嵌在 #statText 句子裡當超連結(點下去切換
+   updated/created)。顏色跟隨該段文字(color:inherit),不要另外強調成
+   amber——只用底線標示可點擊,融入句子而不是跳出來的另一個控制項 */
+.sort-link{background:none;border:none;padding:0;font:inherit;color:inherit;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.sort-link:hover{color:var(--muted)}
+
+/* 瀏覽模式切換(統計列右側,icon-only)。只有一顆鈕(見 index.html 的註解),
+   所以不需要包一層 flex 容器——.stat-right 自己就是 flex + gap。 */
+.vmbtn{background:none;border:1px solid transparent;border-radius:6px;color:var(--faint);
+  font-size:0.9375rem;line-height:1;padding:3px 7px;cursor:pointer}
+.vmbtn:hover{color:var(--muted)}
+.vmbtn.on{color:var(--amber);border-color:var(--border)}
+
+/* ── tag(鏤空標籤 Outlined Tag) ── */
+.tag{font-family:var(--sans);font-size:0.75rem;border-radius:999px;padding:2px 10px;
+  border:1px solid currentColor;background:none;color:var(--muted);
+  display:inline-flex;align-items:center;line-height:1.7}
+.tag .n{color:var(--faint);margin-left:5px}
+.tag.c0{color:var(--tag-text-c0)}.tag.c1{color:var(--tag-text-c1)}.tag.c2{color:var(--tag-text-c2)}
+.tag.c3{color:var(--tag-text-c3)}.tag.c4{color:var(--tag-text-c4)}.tag.c5{color:var(--tag-text-c5)}
+.tag.on{font-weight:500}
+/* 目前正被拿來篩選的標籤 chip:實心反白,跟其他鏤空的 tag 一眼區分開來。
+   用各色對應的 --tag-text-c* 當底色(而非 currentColor)是因為同一條規則
+   內若又改了 color,currentColor 在背景屬性上會解析成新值而非舊值,兩個顏色
+   會疊在一起看不見文字 */
+.tag.selected{color:var(--surface)!important;font-weight:700}
+.tag.selected.c0{background:var(--tag-text-c0)}.tag.selected.c1{background:var(--tag-text-c1)}
+.tag.selected.c2{background:var(--tag-text-c2)}.tag.selected.c3{background:var(--tag-text-c3)}
+.tag.selected.c4{background:var(--tag-text-c4)}.tag.selected.c5{background:var(--tag-text-c5)}
+
+/* ── 結果列 ── */
+/* flex-wrap:wrap + 下面 .card-foot 的 flex:0 0 100%,讓關鍵字列自己佔滿一整行
+   (右緣才與縮圖齊平,不受文字欄寬度限制)。縮圖不會被擠下去——.card-main 是
+   flex:1,basis 0,永遠讓得出空間。
+   gap 拆成 column/row 兩個 longhand:row 分量歸零是必要的,否則關鍵字列上方會多
+   冒一個 16px 的 row-gap。那 16px 原本在「手機版換行」與「方格模式直向排列」兩處
+   是有作用的,已各自用 .card-gallery 的 margin 精確補回(見那兩條規則的註解)。 */
+.card{background:none;border:none;border-bottom:1px solid var(--border);
+  border-radius:0;padding:11px 64px 11px 0;margin-bottom:0;cursor:pointer;position:relative;
+  display:flex;column-gap:16px;row-gap:0;flex-wrap:wrap;align-items:flex-start;
+  transition:background-color .15s ease,border-color .15s ease}
+.card:hover{border-color:var(--border)}
+.card-main{flex:1;min-width:0}
+.card .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.card h2{font-size:0.9375rem;font-weight:600;flex:1;min-width:200px;line-height:1.3;overflow-wrap:break-word}
+.card h2 .alias-inline{font-weight:500;font-size:0.8125rem;color:var(--amber);opacity:.85;margin-left:4px}
+.card .tags{display:flex;gap:9px;flex-wrap:wrap}
+.card .card-foot{display:flex;justify-content:flex-end;margin-top:6px;flex:0 0 100%}
+.card .card-foot .tags{justify-content:flex-end}
+/* margin-left:auto 保證樣板名稱永遠靠右——桌機靠 h2{flex:1} 本來就會被擠到最右,
+   但窄螢幕下 .top 會 wrap,card-tpl 獨佔第二行時預設 flex-start 會變成靠左。 */
+.card .card-tpl{font-size:0.65625rem;color:var(--faint);
+  opacity:.7;white-space:nowrap;align-self:baseline;margin-left:auto}
+.card .tags .tag{cursor:pointer;padding:1px 8px;font-size:0.71875rem}
+.card .tags .tag:hover:not(.selected){background:var(--surface-2)}
+.field{margin-top:3px;display:flex;gap:12px;align-items:baseline;line-height:1.4}
+.field .k{font-family:var(--sans);font-size:0.65625rem;color:var(--faint);
+  letter-spacing:.06em;flex:none;width:32px;text-align:left}
+.field .v{color:var(--muted);font-size:0.8125rem;min-width:0;overflow-wrap:break-word}
+.field-pair{margin-top:3px;display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;line-height:1.4}
+/* flex-shrink:1(而非 flex:none 的 0)+ min-width:0 才能讓過長的值換行,
+   否則巢狀 flex item 預設撐到 max-content 寬度,長字串會把整頁擠出水平捲軸 */
+.field-pair .field-sm{display:flex;gap:8px;align-items:baseline;flex:0 1 auto;min-width:0;max-width:100%}
+.field-pair .k{font-family:var(--sans);font-size:0.65625rem;color:var(--faint);letter-spacing:.06em;white-space:nowrap}
+.field-pair .v{color:var(--muted);font-size:0.8125rem;min-width:0;overflow-wrap:break-word}
+/* 說明欄不像其他 field 有 .k 標籤欄佔掉 32px+12px 的縮排,故補一個縮排
+   讓文字不要死貼在卡片左邊緣;顏色也從跟名詞同色的 --text 降成 --muted(跟其他
+   欄位的 .v 一致),讓說明在視覺上明顯是次要內容,不會搶名詞的視覺重量。
+   桌機再補一條 2px 的左緣線:縮排本身只是留白,說明長到好幾行時看不出「這幾行
+   是同一個區塊」;有了線才框得出範圍。用中性的 --border 而不是飽和色,理由同
+   .card-owner——飽和色會讀起來像警告狀態,而這只是「這是次要內容」。
+   ⚠ 三個數字要一起看:margin 2 + border 2 + padding 11 = 15px,跟加線之前
+   文字的起點完全一樣。改動任何一個都會讓說明相對名詞標題整排位移。 */
+.field.desc{margin-left:2px;padding-left:11px;border-left:2px solid var(--border)}
+.field.desc .v{color:var(--muted);display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:6;line-clamp:6;overflow:hidden}
+
+/* ── 卡片圖庫(說明欄貼上的圖片,獨立呈現在卡片右側,多張時疊左右箭頭切換) ── */
+/* margin-top 讓縮圖頂端不與名詞標題同高,下移一行、與第一列欄位切齊。
+   22.5px = 標題列高 19.5px(h2 0.9375rem × line-height 1.3)+ 欄位列的 3px margin;
+   .card 字級是 14px,故寫成 1.6em——用 em 而非 px,按 A+/A− 調字級時才會跟著標題移動。 */
+.card-gallery{position:relative;flex:none;width:150px;height:112px;margin-top:1.6em;
+  border-radius:8px;overflow:hidden;background:var(--surface-2)}
+/* 縮圖是「開圖片檢視器」的按鈕(卡片其餘部分才是開詳細頁),游標要說得出這件事。
+   放大鏡游標比 pointer 更精確:pointer 在這張卡上到處都成立,分辨不出點縮圖跟
+   點別處會發生不一樣的事。 */
+.card-gallery img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.card-gallery img:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.gallery-nav{position:absolute;top:50%;transform:translateY(-50%);width:24px;height:24px;
+  border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:0.9375rem;
+  line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  opacity:0;transition:opacity .15s ease}
+.card-gallery:hover .gallery-nav{opacity:1}
+.gallery-nav:hover{background:rgba(0,0,0,.65)}
+.gallery-nav.prev{left:4px}
+.gallery-nav.next{right:4px}
+.gallery-count{position:absolute;right:6px;bottom:5px;font-size:0.625rem;color:#fff;
+  background:rgba(0,0,0,.5);border-radius:999px;padding:1px 7px;letter-spacing:.02em}
+/* 統計列的「隱藏說明」開關:純靠 #list 容器 class 切換,詳細/多欄兩種模式都適用。
+   不只藏說明,只留名詞本身,其餘別名/欄位/程式碼縮圖/樣板名稱/附件/標籤都收起來,
+   讓卡片精簡成一行,並強制靠左(不受其他模式 justify-content 設定影響)。 */
+#list.hide-desc .card .alias-inline,
+#list.hide-desc .card .field.desc,
+#list.hide-desc .card .field-pair,
+#list.hide-desc .card .code-peek,
+#list.hide-desc .card .card-tpl,
+#list.hide-desc .card .card-tpl-grid,
+#list.hide-desc .card .card-foot,
+#list.hide-desc .card .card-gallery,
+#list.hide-desc .card .img-badge,
+#list.hide-desc .card .attach-badge{display:none}
+#list.hide-desc .card .top{justify-content:flex-start}
+/* 統計列的「隱藏圖片」開關。與上面的 hide-desc 有一點不同:
+   多一個逐卡的逃生口 .img-shown:點標題列的 🖼 N 就地展開/收合那一張。
+   切換時不重繪(見 list.js 的 applyImgMode),所以縮圖不會被銷毀重建、重新請求。
+   hide-desc 仍然涵蓋 hide-img(上面那組已經把圖庫與 chip 都收掉了),那是刻意的:
+   「隱藏說明」本來就是更強的精簡模式,不是跟這顆開關打架。 */
+#list.hide-img .card:not(.img-shown) .card-gallery{display:none}
+.img-badge{display:none;border:none;background:none;cursor:pointer;padding:0 2px;
+  font-size:0.75rem;color:var(--muted);font-family:inherit;line-height:inherit}
+#list.hide-img .img-badge{display:inline-flex;align-items:center;gap:2px}
+#list.hide-img .img-badge:hover{color:var(--text)}
+#list.hide-img .card.img-shown .img-badge{color:var(--amber)}
+/* ⚠ 方格模式的工具列 top 是照「封面高 + margin」硬算的(見下方 .view-grid .card-toolbar),
+   沒有封面時才收回右上角。但那條靠 :not(:has(.card-gallery)),而 display:none 的節點
+   **仍然**命中 :has()——少了這條,隱藏圖片後工具列會浮在一片空白上。這條 (1,5,0)
+   同時蓋過那條的 (0,4,0) 與 mobile 區塊 .view-grid .card .card-toolbar 的 (0,3,0),
+   所以一條就夠、不必再進 media query 補一份。
+   ⚠ .view-grid 與 .hide-img 是掛在**同一個** #list 上,兩個 class 要連寫、不能用
+   後代組合子。 */
+#list.hide-img.view-grid .card:not(.img-shown) .card-toolbar{top:10px}
+.v code{font-family:var(--mono);font-size:0.8125rem;background:var(--surface-2);
+  border-radius:4px;padding:1px 5px;color:var(--amber)}
+.empty{color:var(--faint);text-align:center;padding:56px 0;font-size:0.875rem}
+/* 「載入更多內容」:靜態放在 #list 之外(index.html),不會被 list.js 的
+   list.innerHTML = html 整包沖掉。顯示/隱藏由 list.js 依 state.hasMore 控制。 */
+.load-more{display:block;margin:18px auto;padding:9px 22px;font-size:0.8125rem}
+.empty b{color:var(--muted)}
+/* 設定分頁裡的空狀態不需要卡片列表那種大留白 */
+.settings-box .empty{padding:24px 0}
+
+/* ── 多欄呈現(流動版面,像圖片牆;每格只放名稱＋說明＋標籤,高度隨內容伸縮) ── */
+#list.view-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;margin-top:8px}
+/* align-items 要蓋掉 .card 的 flex-start:改成直向排列後,交錯軸變成水平,
+   flex-start 會讓封面縮圖縮到內容寬度而不是撐滿整格。
+   flex-wrap:nowrap 則是要蓋掉 .card 的 flex-wrap:wrap(那是讓關鍵字列換到自己一行、
+   以及手機版讓圖庫掉到下一行用的):方格是直向堆疊,永遠只有一行。留著 wrap 的話,
+   flex line 的寬度會改由「內容的 max-content」而不是格子寬度決定,封面的負 margin
+   出血就會從那個較寬的基準再往外加,整張圖溢出格子、兩欄時左右互相重疊。 */
+.view-grid .card{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;
+  border:1px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin:0}
+.view-grid .card:hover{background:var(--surface-2)}
+/* 縮圖在方格內當封面:order:-1 把它排到文字之前(DOM 上圖庫在 .card-main 之後,
+   詳細模式靠 flex row 排在右側,方格模式則要在最上方),負 margin 打平卡片內距
+   做滿版出血,上緣圓角配合卡片 10px 邊框的內半徑 9px。
+   下緣的 26px = 原本自己的 10px + .card 的 row-gap 16px:row-gap 為了關鍵字列改成 0
+   之後,這裡要把那 16px 加回來,封面與標題的距離才跟以前一樣。 */
+.view-grid .card .card-gallery{order:-1;width:auto;height:120px;
+  margin:-14px -14px 26px;border-radius:9px 9px 0 0}
+/* 方格較窄,左右切換鈕縮一號 */
+.view-grid .card .gallery-nav{width:20px;height:20px;font-size:0.8125rem}
+/* 方格內除了「說明」以外一律不斷行:超寬就單行截斷(ellipsis),
+   避免長標題/長別名/長標籤把方格撐得高矮不一 */
+.view-grid .card .top{flex-wrap:nowrap}
+.view-grid .card h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.view-grid .card .attach-badge{flex:none}
+/* 別名在方格內太窄容易跟名稱擠成一行溢位,改成自己另起一行,一樣不斷行 */
+.view-grid .card h2 .alias-inline{display:block;margin-left:0;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 精簡:方格內不顯示樣板欄位與程式碼縮圖;說明保留但比詳細模式的 6 行再收短一行 */
+.view-grid .card .field-pair,.view-grid .card .code-peek{display:none}
+/* 方格內不縮排、也不畫左緣線(同手機版的取捨,理由在 .field.desc 原地):
+   一格的內容寬只有 ~240px,15px 就吃掉 6%;而詳細模式那條線是為了在整片寬版
+   文字裡框出「這幾行是同一個區塊」,方格本身已經是一個有邊框的格子,格內
+   再畫一條線只是多一道跟格子邊框平行的雜訊。
+   ⚠ 特異性 (0,3,0) 打得過 .field.desc 的 (0,2,0),所以不必寫 !important;
+   .code-peek 這裡不用跟著歸零——方格內它本來就 display:none(見上一行)。 */
+.view-grid .card .field.desc{margin-top:6px;margin-left:0;padding-left:0;border-left:none}
+.view-grid .card .field.desc .v{-webkit-line-clamp:5;line-clamp:5}
+/* 樣板名稱在方格內從標題旁移到標籤上方(見 list.js 的 .card-tpl-grid) */
+.view-grid .card .top .card-tpl{display:none}
+.card-tpl-grid{display:none}
+.view-grid .card .card-tpl-grid{display:block;font-size:0.65625rem;color:var(--faint);
+  opacity:.7;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-align:right}
+/* 標籤在方格內改用純文字樣式(保留各標籤顏色),以 " - " 相連,比鏤空 chip 更省空間,
+   靠左對齊、單行不斷行(超過寬度直接裁切,不換第二行) */
+/* flex 要還原成預設的 0 1 auto:方格是直向 flex,.card 給關鍵字列的 flex-basis:100%
+   在這裡量的是主軸=高度,不還原的話這一列會撐成整格的高度、把方格擠爆。 */
+.view-grid .card-foot{justify-content:flex-start;flex:0 1 auto}
+.view-grid .card .tags{gap:0;flex-wrap:nowrap;overflow:hidden;justify-content:flex-start}
+.view-grid .card .tags .tag{border:none;background:none;padding:0;line-height:1.5;
+  white-space:nowrap;flex:none}
+.view-grid .card .tags .tag:not(:last-child)::after{content:" - ";color:var(--faint);font-weight:400}
+.view-grid .card .tags .tag.selected{background:none!important;text-decoration:underline}
+.view-grid .card .tags .tag.selected.c0{color:var(--tag-text-c0)!important}
+.view-grid .card .tags .tag.selected.c1{color:var(--tag-text-c1)!important}
+.view-grid .card .tags .tag.selected.c2{color:var(--tag-text-c2)!important}
+.view-grid .card .tags .tag.selected.c3{color:var(--tag-text-c3)!important}
+.view-grid .card .tags .tag.selected.c4{color:var(--tag-text-c4)!important}
+.view-grid .card .tags .tag.selected.c5{color:var(--tag-text-c5)!important}
+/* 工具列固定在方格右上,沿用 hover 顯示。不疊在封面縮圖上——圖示蓋住使用者
+   自己上傳的照片,手機上又是常駐顯示(見下方 mobile 區塊),看起來像蓋住內容
+   的錯誤,不是懸浮 UI。改成貼齊縮圖正下方、跟標題同一列的右側(比照桌機
+   detail 模式的工具列本來就落在標題那排、不覆蓋圖庫的慣例)。top 用固定像素
+   而非動態計算:縮圖高度(120px,見 .view-grid .card-gallery)與其下的 10px
+   margin 都是固定值、不受 --font-scale 字級縮放影響。
+   ★ 改封面高度時這個值必須跟著改(= 封面高 + 10px margin + 4px)。 */
+.view-grid .card-toolbar{top:134px;right:10px;flex-direction:row;gap:0;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1px}
+/* 上面那個 top 是「封面高 + margin」推算出來的,前提是卡片有封面圖。套到沒有圖的
+   卡片(只有標題+說明+標籤,約 250px 高)會把工具列推到卡片底部甚至溢出,壓住
+   標籤列與下一張卡。沒有圖就沒有要避開的東西,收回右上角即可。特異性 (0,4,0)
+   高於下方 mobile 區塊的 .view-grid .card .card-toolbar (0,3,0),兩種寬度都適用。 */
+.view-grid .card:not(:has(.card-gallery)) .card-toolbar{top:10px}
+/* 標題列讓出跟上面同寬的空間,避免長標題被 ellipsis 裁切前,尾端先被工具列蓋住 */
+.view-grid .card .top{padding-right:56px}
+/* 空狀態跨滿整列,不被塞進單一方格 */
+.view-grid .empty{grid-column:1/-1}
+
+/* ── 編輯器(置中顯示的 modal,見 #editorModal;.editor 本身就是視覺上的方框,
+   #editorModal 只是負責置中與捲動的 overlay,不再另外包一層 .modal-box) ── */
+#editorModal{overflow-y:auto}
+.editor{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:44px 28px 28px;width:100%;max-width:820px;box-shadow:0 30px 70px rgba(0,0,0,.2)}
+.editor > *{margin-top:12px}
+.editor > *:first-child{margin-top:0}
+/* 編輯器右上角的圓形關閉鈕,效果同下方的「取消」按鈕。貼在方框內側右上角
+   (比照 .modal-close 的做法)——不能再像早期版本那樣用負值 top/right 讓按鈕
+   一半露在方框外:#editorModal 要能捲動(見上),父層一旦有 overflow-y:auto,
+   CSS 規範會連帶把 overflow-x 也強制成 auto,露在外面的部分會被裁掉。
+   .editor 的 padding-top 因此加大到 44px,幫按鈕騰出空間、不擋住第一列欄位。 */
+.editor-close{position:absolute;top:14px;right:14px;width:28px;height:28px;
+  border-radius:50%;border:1px solid var(--border);background:var(--surface);
+  color:var(--faint);font-size:0.75rem;line-height:1;display:flex;
+  align-items:center;justify-content:center;margin:0;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.editor-close:hover{color:var(--text);border-color:var(--muted)}
+.editor input[type=text],.editor textarea{width:100%;background:none;
+  border:none;border-bottom:1px solid var(--border);border-radius:0;padding:8px 2px;font-size:0.9375rem}
+.editor input[type=text]:focus,.editor textarea:focus{outline:none;border-color:var(--amber)}
+.editor textarea{min-height:100px;resize:vertical;line-height:1.6;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.row2{display:flex;gap:24px}
+.row2>*{flex:1;min-width:0}
+@media (max-width:480px){.row2{flex-direction:column}}
+/* 樣板下拉與動態欄位區(editor.js 的 #e_template / #e_fields) */
+.editor select{width:100%;background:none;color:var(--text);border:none;
+  border-bottom:1px solid var(--border);border-radius:0;padding:8px 2px;font-size:0.875rem}
+.editor select:focus{outline:none;border-color:var(--amber)}
+.editor select option{background:var(--surface);color:var(--text)}
+#e_fields .row2{margin-top:12px}
+#e_fields .row2:first-child{margin-top:0}
+.tag .x{margin-left:6px;cursor:pointer;color:inherit;opacity:.7;background:none;border:none;font-size:0.75rem}
+.tag .x:hover{opacity:1}
+.editor .actions{display:flex;gap:8px;margin-top:22px;align-items:center}
+.editor .actions .spacer{flex:1}
+.hint{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);align-self:center}
+.aigen-box{background:var(--surface-2);border:1px dashed var(--border);border-radius:8px;padding:10px}
+.aigen-box textarea{min-height:64px;font-family:var(--mono);font-size:0.8125rem}
+.aigen-box #e_ai_paste_btn{margin-top:8px}
+/* 文章>關鍵字模式:文章預覽(滑鼠選取文字加入名詞清單)與名詞 chips */
+#e_article_box #e_article_text{font-family:var(--sans)}
+.article-hint{font-family:var(--sans);font-size:0.6875rem;color:var(--muted);margin:8px 0 6px;line-height:1.5}
+.article-preview{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;margin-bottom:8px;max-height:240px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;font-size:0.8125rem;line-height:1.7;cursor:text}
+.article-preview::selection,.article-preview *::selection{background:var(--amber);color:#000}
+.article-kws{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.article-actions{display:flex;gap:10px;align-items:center;margin-top:8px}
+/* 名詞欄位 + AI 生成圖示(name 模式) */
+.name-cell{display:flex;align-items:center;gap:8px}
+.name-cell>input{flex:1;min-width:0}
+.ai-icon-btn{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:8px;
+  color:var(--muted);cursor:pointer;padding:5px 9px;font-size:0.9375rem;line-height:1}
+.ai-icon-btn:hover{border-color:var(--amber)}
+.ai-icon-btn:disabled{opacity:.5;cursor:default}
+/* 欄位右側小圖示(✨ AI 重寫 / ✕ 清空;名詞與樣板欄位共用) */
+/* flex-wrap + .f-lab 佔滿整行 → 小標題自成一列,input+圖示排下一列。
+   標題是使用者辨識欄位的常駐線索(placeholder 一打字就消失,截斷又長)。 */
+.field-cell{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
+.field-cell>input{flex:1;min-width:0}
+.f-lab{flex:0 0 100%;font-size:0.75rem;color:var(--muted);line-height:1.4}
+/* 欄位標題右邊的「?」:桌機把長提示從 placeholder 收進這顆(hover 才顯示,零高度)。
+   形狀沿用側欄複習那顆 .srs-help 的圓形問號——同一種東西就長同一個樣子。 */
+.f-hint{display:inline-flex;align-items:center;justify-content:center;
+  width:1.4em;height:1.4em;margin-left:6px;border:1px solid var(--border);border-radius:50%;
+  font-family:var(--sans);font-size:0.6875rem;line-height:1;color:var(--faint);cursor:help}
+.f-hint:hover{color:var(--text);border-color:var(--muted)}
+.field-icon{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);cursor:pointer;padding:5px 7px;font-size:0.75rem;line-height:1}
+.field-icon:hover{border-color:var(--amber);color:var(--text)}
+.field-icon:disabled{opacity:.5;cursor:default}
+/* AI 單欄重寫的新舊比較盒(插在欄位下方,一鍵選用) */
+.ai-compare{border:1px dashed var(--amber);border-radius:8px;padding:10px;margin:10px 0;
+  background:var(--surface-2)}
+.ai-compare-head{font-size:0.75rem;color:var(--muted);margin-bottom:8px}
+.ai-compare-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ai-compare-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ai-compare-label{font-size:0.6875rem;color:var(--faint)}
+.ai-compare-col.is-new .ai-compare-label{color:var(--amber)}
+.ai-compare-val{flex:1;font-size:0.8125rem;line-height:1.55;background:var(--surface);
+  border:1px solid var(--border);border-radius:6px;padding:8px 10px;
+  max-height:220px;overflow:auto;word-break:break-word}
+.ai-compare-val .faint{color:var(--faint)}
+@media (max-width:640px){.ai-compare-cols{grid-template-columns:1fr}}
+.mdtoolbar .spacer{flex:1}
+/* 標籤欄位 + AI 建議圖示 */
+.tags-cell{display:flex;align-items:flex-start;gap:8px}
+.tags-cell>.selectfield{flex:1;min-width:0}
+.tags-cell>.ai-icon-btn{min-height:38px}
+/* 圍籬程式碼區塊,編輯器用的乾淨版(無語言標籤/複製按鈕/上色)——
+   htmlToMd 讀回 contenteditable 內容時只認得這個乾淨形狀,見 markdown.js。
+   line-height 刻意設在 <pre> 本身、不是只設在 <code> 上:<pre> 用 white-space:pre
+   把整段文字的換行都算進同一個 inline box,瀏覽器排版每一行時用的「行高基準」
+   (strut)是塊級容器(pre)自己的 font-size/line-height,不是內層 code 的——
+   只改 code 的 line-height 沒用,外層(如 .detail-desc)繼承下來的 1.65 大行距
+   會整個蓋掉,行距因此被撐得比 SO 那種緊湊排法鬆很多。 */
+pre.cb{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;margin:8px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:0.78125rem;line-height:1.4}
+pre.cb code{white-space:pre;color:var(--text);background:none;padding:0;border-radius:0;tab-size:2}
+code.cb-chip{font-family:var(--sans);font-size:0.6875rem;opacity:.7}
+
+/* 詳細頁的「完整版」程式碼區塊:語言標籤 + 複製按鈕 + 依語言上色
+   (見 markdown.js:richCodeBlockHtml)。外層 wrap 接手邊框/圓角,
+   裡面的 pre.cb 只留下半部圓角,避免跟標題列疊出雙重邊框。 */
+.cb-wrap{border:1px solid var(--border);border-radius:8px;margin:10px 0;overflow:hidden}
+.cb-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.cb-lang{font-family:var(--mono);font-size:0.6875rem;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+.cb-copy{font-family:var(--sans);font-size:0.6875rem;color:var(--muted);background:none;
+  border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer}
+.cb-copy:hover{color:var(--text);border-color:var(--muted)}
+.cb-copy:disabled{color:var(--green);border-color:var(--green);cursor:default}
+.cb-body{display:flex;align-items:stretch;overflow:hidden}
+/* 行號欄跟 pre.cb 分屬兩個 flex 子項並排:padding-top/bottom 與
+   line-height/font-size 必須跟 pre.cb 一致,否則兩欄逐行對不齊 */
+.cb-ln{flex:0 0 auto;margin:0;padding:10px 10px 10px 12px;text-align:right;
+  white-space:pre;color:var(--faint);user-select:none;background:var(--surface-2);
+  border-right:1px solid var(--border);font-family:var(--mono);font-size:0.78125rem;line-height:1.4}
+.cb-wrap pre.cb{border:none;border-radius:0;margin:0;flex:1;min-width:0}
+/* 語法高亮 token 顏色(見 static/js/highlight.js) */
+.tok-kw{color:var(--syn-kw);font-weight:600}
+.tok-str{color:var(--green)}
+.tok-num{color:var(--tag-text-c2)}
+.tok-com{color:var(--faint);font-style:italic}
+.tok-fn{color:var(--amber)}
+
+/* 卡片預覽的迷你程式碼縮圖(見 markdown.js:codePeekHtml):固定小字級、
+   不換行、左側帶行號欄;收合時超過的部分用漸層淡出 + 行數提示收尾(不生硬地
+   切在字元中間),下方的展開鈕可以直接在卡片上攤開完整原始碼 */
+.code-peek{position:relative;margin-top:6px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-left: 15px;margin-top: 18px;margin-bottom: 12px;}
+.code-peek-body{position:relative;display:flex;align-items:stretch;overflow:hidden}
+/* 同上:line-height 設在 pre 本身,避免外層 line-height 撐大行距。
+   行號欄與原始碼欄的 padding/line-height 必須一致,否則兩欄會逐行錯開。 */
+.code-peek pre{margin:0;padding:8px 10px;overflow:hidden;
+  font-family:var(--mono);font-size:0.71875rem;line-height:1.4}
+/* 行號獨立一欄(不是插在每行前面):框選程式碼時不會把行號一起複製走 */
+.code-peek-ln{flex:0 0 auto;padding-left:8px;padding-right:8px;text-align:right;
+  white-space:pre;color:var(--faint);user-select:none;
+  background:var(--surface);border-right:1px solid var(--border)}
+.code-peek-src{flex:1;min-width:0}
+.code-peek code{white-space:pre;color:var(--text)}
+/* 展開後允許橫向捲動:行號欄是獨立的 flex 欄,不會跟著捲走 */
+.code-peek.is-open .code-peek-src{overflow-x:auto}
+.code-peek-fade{position:absolute;left:0;right:0;bottom:0;height:22px;
+  background:linear-gradient(to bottom,transparent,var(--surface-2));
+  display:flex;align-items:flex-end;justify-content:flex-end;padding:0 8px 2px}
+.code-peek-more{font-family:var(--sans);font-size:0.625rem;color:var(--faint)}
+.code-peek-toggle{display:block;width:100%;padding:4px 8px;border:none;
+  border-top:1px solid var(--border);background:var(--surface);cursor:pointer;
+  font-family:var(--sans);font-size:0.625rem;color:var(--muted)}
+.code-peek-toggle:hover{color:var(--text);background:var(--surface-2)}
+
+.btn.icon{padding:9px 10px;font-size:0.875rem;line-height:1}
+
+/* ── 佈景主題切換 + 登出(一起釘在畫面右上角的獨立圖示按鈕群組) ── */
+
+/* ── 選單式欄位 ── */
+.selectfield{position:relative}
+.selectbox{min-height:38px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  background:none;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:6px 2px;cursor:pointer}
+.selectbox:hover{border-color:var(--muted)}
+.selectbox.open{border-color:var(--amber)}
+.selectbox .ph{color:var(--faint);font-size:0.875rem;padding:3px 2px}
+.selectdrop{position:absolute;left:0;top:calc(100% + 6px);z-index:15;width:100%;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 16px 40px rgba(0,0,0,.14);overflow:hidden}
+.selectdrop input{width:100%;background:var(--surface-2);border:none;border-bottom:1px solid var(--border);
+  padding:9px 12px;font-size:0.8125rem;outline:none}
+.selectopts{overflow-y:auto;max-height:210px;padding:4px}
+/* 格狀選項(select.js 的 cfg.grid,目前只有編輯器的關鍵字欄用):選項多時一列
+   一項要捲很久,改成桌機 5 欄、手機 3 欄。「新增」與「無符合」列橫跨整排;
+   名稱過長就截斷加省略號(格子寬度固定,不然一個長標籤會把整欄撐開)。 */
+.selectopts.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-height:262px}
+.selectopts.grid .selectopt{min-width:0}
+.selectopts.grid .selectopt span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selectopts.grid .selectopt.create,.selectopts.grid .selectopt.empty{grid-column:1 / -1}
+.selectopt{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;
+  cursor:pointer;font-size:0.8125rem}
+.selectopt.hl,.selectopt:hover{background:var(--surface-2)}
+.selectopt .chk{width:14px;flex:none;color:var(--amber);font-size:0.75rem;visibility:hidden}
+.selectopt.on .chk{visibility:visible}
+.selectopt.create{color:var(--amber);font-family:var(--sans)}
+.selectopt.empty{color:var(--faint);cursor:default}
+
+/* ── 分類目錄側欄 ── */
+.dir-sidebar{display:none;scrollbar-width:none;-ms-overflow-style:none}  /* 可捲動但不顯示捲軸 */
+.dir-sidebar::-webkit-scrollbar{display:none}
+.dir-sidebar-close{display:none}
+.dir-backdrop{display:none}
+.mobile-filter-toggle{display:none}
+@media (min-width:1024px){
+  /* 側欄(216px)+間距(24px)+主欄(880px)視為一個整體置中,
+     避免只有主欄置中導致右側留下側欄寬度的空白。
+     max()/min() 是給 1024–1219px 的平板橫向(Tab S8+ 視窗 1120px、iPad 1024–1180px)用的:
+     整體 1120px 塞不下時改成左貼齊(側欄 left 16px、主欄縮窄),側欄仍常駐;
+     ≥1220px 時 max()/min() 一律選回原本的 50% 置中公式,寬螢幕版面逐 px 不變。 */
+  .wrap{width:min(880px, calc(100vw - 272px));margin-left:max(256px, calc(50% - 320px));margin-right:0}
+  .dir-sidebar{
+    display:block;position:fixed;top:40px;  /* 對齊 .wrap 的上 padding,LOGO 與 header 按鈕列同高 */
+    left:max(16px, calc(50% - 560px));width:216px;max-height:calc(100vh - 80px);
+    overflow-y:auto;background:none;border:none;
+    border-radius:0;padding:0}
+  /* 新建/詳細內容彈窗在桌機版「維持蓋滿全螢幕」,跟設定/未分組標籤彈窗一致。
+     曾經試過把 overlay 左界收窄到側欄右緣(left:calc(50% - 344px)),讓彈窗開著
+     時側欄仍可見可操作——版面會偏掉,而且工具列/行寬/padding 每次調整都要連帶
+     重算這個左界,已經放棄。要再挑戰請連同 .modal-box 的置中與畫重點工具列的
+     定位(detail.js:positionHlToolbar)一起想,不要只加回這一條。 */
+}
+/* 窄螢幕(<1024px):側欄改成從左側滑入的抽屜,由「☰ 篩選」按鈕觸發 */
+@media (max-width:1023.98px){
+  .mobile-filter-toggle{display:inline-flex;align-items:center;gap:4px}
+  .dir-sidebar{
+    display:block;position:fixed;top:0;left:0;bottom:0;z-index:70;
+    width:82%;max-width:300px;background:var(--surface);border:none;
+    border-right:1px solid var(--border);padding:24px 20px;overflow-y:auto;
+    transform:translateX(-100%);transition:transform .22s ease;
+    box-shadow:0 0 40px rgba(0,0,0,.25)}
+  .dir-sidebar.show{transform:translateX(0)}
+  .dir-sidebar-close{display:flex;margin-bottom:14px}
+  .dir-backdrop.show{display:block;position:fixed;inset:0;z-index:60;background:rgba(20,20,18,.45)}
+}
+.dir-sidebar h3{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+/* 標題右側掛一顆小控制項的那種 h3 列(目前只有「日期」的欄位切換)。
+   h3 自己的 margin-bottom 移到列上,不然按鈕會被那 8px 往上推得跟標題不齊。 */
+.sidebar-h3row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.sidebar-h3row h3{margin-bottom:0;flex:none}
+/* 切換鈕顯示的是**目前生效的欄位**(見 sidebar.js:dateFieldLabel)。
+   預設(上次編輯)維持淡色,切到建立時間才轉 amber——非預設狀態要看得出來,
+   否則使用者會忘記自己把時間軸換過,然後覺得日期篩選壞了。 */
+.datefield-toggle{font-family:var(--sans);font-size:0.625rem;letter-spacing:.04em;
+  background:none;border:1px solid var(--border);border-radius:999px;
+  color:var(--faint);padding:2px 8px;cursor:pointer;white-space:nowrap}
+.datefield-toggle:hover{color:var(--text);border-color:var(--muted)}
+.datefield-toggle.on{color:var(--amber);border-color:var(--amber)}
+/* 複選標籤開關(.pill-toggle 共用樣式,見上方),在側欄跟標籤樹之間留一點間距 */
+#multiSelectToggle{margin-bottom:8px}
+.dir-sidebar .dir-list{display:flex;flex-direction:column;gap:0}
+.dir-sidebar .dir-item{display:flex;align-items:center;gap:6px;padding:3px 2px;
+  border-radius:0;cursor:pointer;font-size:0.8125rem;line-height:1.3;color:var(--muted)}
+.dir-sidebar .dir-item:hover{color:var(--text)}
+.dir-sidebar .dir-item.on{background:none;color:var(--amber);font-weight:700}
+.dir-sidebar .dir-item .ico{display:none}
+.dir-sidebar .dir-item .n{margin-left:auto;font-family:var(--sans);font-size:0.6875rem;opacity:.7}
+.dir-sidebar .dir-item.depth1{padding-left:16px}
+.dir-sidebar .dir-item.depth2{padding-left:32px}
+.dir-sidebar .dir-item.depth3{padding-left:48px}
+.dir-sidebar .empty{color:var(--faint);font-size:0.75rem}
+.dir-sidebar hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+/* ── 日期橫條篩選(見 sidebar.js:renderDateBar):軌道右端=今天,bar 寬=區間天數 ── */
+.datebar{display:flex;align-items:center;gap:5px;margin-bottom:9px;font-size:0.6875rem}
+/* 尺寸用 em:跟著字級縮放(A−/A+ 與手機版放大時 bar 不會被文字撐爆) */
+.datebar-arrow{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);
+  width:2em;height:2em;line-height:1;font-size:0.5625rem;cursor:pointer;flex:none;padding:0}
+.datebar-arrow:hover:not(:disabled){color:var(--text);border-color:var(--faint)}
+.datebar-arrow:disabled{opacity:.35;cursor:default}
+.datebar-track{position:relative;flex:1;height:1.65em;border-radius:6px;
+  background:var(--surface-2);border:1px solid var(--border);overflow:hidden}
+.datebar-win{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
+  background:var(--amber);border-radius:5px;cursor:grab;min-width:2.2em;touch-action:none;user-select:none}
+.datebar:not(.on) .datebar-win{opacity:.45}
+.datebar-win:active{cursor:grabbing}
+.datebar-num{font-family:var(--sans);font-weight:700;color:var(--bg);
+  padding:0 6px;line-height:1.65em}
+.datebar-label{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  display:flex;align-items:center;gap:6px;min-height:18px}
+.datebar-label-text{flex:1;min-width:0}
+.datebar-clear{background:none;border:none;color:var(--faint);cursor:pointer;font-size:0.625rem;padding:0 2px}
+.datebar-clear:hover{color:var(--text)}
+/* +/− 區間天數,釘在 datebar-label 右側(datebar-label-text 用 flex:1 把它們推過去) */
+.date-steppers{display:flex;gap:4px;flex:none}
+.date-step{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);
+  width:1.7em;height:1.7em;line-height:1;font-size:0.75rem;cursor:pointer;flex:none;padding:0;
+  display:flex;align-items:center;justify-content:center;font-family:var(--sans)}
+.date-step:hover{color:var(--text);border-color:var(--faint)}
+/* 側欄標籤區的群組小節標題(不可點,與標籤 chip 視覺區分) */
+.tag-group-head{font-family:var(--sans);font-size:0.65625rem;color:var(--faint);
+  letter-spacing:.08em;font-weight:700;margin:8px 0 2px;text-transform:uppercase}
+.tag-group-head:first-child{margin-top:0}
+.dir-item.tagitem .tagdot{width:6px;height:6px;border-radius:50%;flex:none;background:currentColor;opacity:.9}
+.dir-item.tagitem.c0{color:var(--tag-text-c0)}.dir-item.tagitem.c1{color:var(--tag-text-c1)}
+.dir-item.tagitem.c2{color:var(--tag-text-c2)}.dir-item.tagitem.c3{color:var(--tag-text-c3)}
+.dir-item.tagitem.c4{color:var(--tag-text-c4)}.dir-item.tagitem.c5{color:var(--tag-text-c5)}
+.dir-item.tagitem.on{background:none;color:var(--text);font-weight:700}
+
+/* ── 設定 modal(左側選單 + 右側詳細頁,結構同詳細內容 modal) ──
+   刻意做成緊湊版面:設定項目是「掃過去找到那一項」的清單,不是逐字閱讀的內文,
+   行距與垂直間距都比一般內容小一階,讓一屏塞得下更多項、少捲動。
+   line-height 設在 .settings-box 上一次收掉,底下不必逐條寫。 */
+/* ⚠ 這兩個宣告其實不生效:.modal-box(第 989 行)同為單一 class 權重、又寫在後面,
+   會蓋掉它們——設定彈窗實際套用的是 .modal-box 的 max-width:920px / padding:40px 49px。
+   保留原值當紀錄,要真的改設定彈窗的寬度請改 .modal-box 或提高這裡的選擇器權重。 */
+.settings-box{max-width:820px;padding:40px 44px;line-height:1.35}
+/* ⚠ 必須寫成 .modal-box.settings-box(0,2,0):上面那條 max-width 其實從來沒生效過——
+   `.modal-box{max-width:920px}` 特異性相同但寫在後面(檔案 1300 多行處),照 CSS
+   的後來居上就贏了。設定彈窗實際一直是 920px。
+   960 = 920 + 40:左側 nav 加寬的那 40px 從彈窗總寬補回來,右側面板維持原本的 644px,
+   兩欄並排的 .settings-duo 才不會跟著縮水。 */
+/* 左側那一整條(彈窗內距 + nav + 溝)本來吃掉將近 270px,而右側主內容才是使用者
+   真正在看的東西。內距 49→26、溝 28→20(在下面 .settings-layout 那條改),
+   右側面板從 629px 長到 698px,兩欄並排的 .settings-duo 各多約 34px。 */
+.modal-box.settings-box{max-width:960px;padding:36px 26px}
+.modal-box.settings-box h2{margin-bottom:10px}
+/* gap 28 → 20:理由見上面 .modal-box.settings-box。⚠ 要改就改在這裡——
+   在這條之前另寫一條 `.settings-layout{gap:20px}` 特異性相同但排在前面,
+   會被這一條蓋掉、完全不生效(同 .settings-box 的 max-width 踩過的坑)。 */
+.settings-layout{display:flex;gap:20px;margin-top:12px;min-height:340px}
+/* 150 → 190:150px 減掉分頁的左右內距只剩 111px 可放字,英/日/西語的
+   「Sharing & backup」「Backup & restore」這種兩個字的標籤一定折行,而折行的
+   分類標題會讓整份 nav 的節奏亂掉。加寬 40px 之後可用寬 162px,同一批標籤
+   全部一行放得下(那 40px 由 .settings-box 的 max-width 補回去,不吃右側面板)。 */
+.settings-tabs{display:flex;flex-direction:column;gap:2px;width:190px;flex-shrink:0;
+  border-right:1px solid var(--border);padding-right:0px;align-items:stretch}
+/* 群組標題:不可點、不進 Tab 焦點順序(是 div 不是 button),只負責把 11 個分頁
+   切成「內容 / AI 功能 / 分享與備份 / 系統」四疊。
+   ⚠ 三個訊號要一起用才分得開——只靠字級與粗細不夠:標題與分頁擠在同一條左邊界上,
+   眼睛會把整欄讀成一串等權重的項目(標題自己也像是一個可點的分頁)。所以:
+     ① 標題貼齊左邊界、分頁往內縮排 10px,兩層各有自己的對齊線;
+     ② 每一群上方一條細線,把「一群」的邊界畫出來(第一群不用,上面就是 h2);
+     ③ 標題沿用全站「區段標籤」既有的視覺語彙(同 .tagmgr-section-title:faint 色 +
+        寬字距 + 轉大寫 + 600),一看就知道是標籤而不是可點項目。
+   窄螢幕橫排時標題整批隱藏,分頁的縮排也一併還原(見下方窄螢幕退化區塊)。
+   ⚠ nowrap + ellipsis 是刻意的:分類標題折行會讓底下那疊分頁看起來像少了一格,
+   而它只是「這底下是一群」的提示,截字比折行好讀。加寬 nav 後 12 種語言都是
+   一行放得下的(最長的葡語已改短),ellipsis 只是未來新譯文過長時的保險。 */
+.settings-navgroup{font-size:0.6875rem;font-weight:600;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;padding:11px 8px 0;margin:12px 0 3px;
+  border-top:1px solid var(--border);user-select:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.settings-navgroup:first-child{margin-top:0;border-top:none;padding-top:0}
+.settings-tab{background:none;border:none;color:var(--muted);font-size:0.84375rem;
+  padding:6px 10px 6px 18px;border-radius:10px;text-align:left;border-left:2px solid transparent}
+.settings-tab:hover{color:var(--text);background:var(--surface-2)}
+.settings-tab.on{color:var(--amber);border-left-color:var(--amber);font-weight:600;background:var(--surface-2)}
+.settings-main{flex:1;min-width:0}
+.settings-panel{display:none}
+.settings-panel.show{display:block}
+.settings-group{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.settings-row{display:block;width:100%;text-align:left;background:none;border:none;
+  border-bottom:1px solid var(--border);color:var(--text);padding:10px 16px;font-size:0.875rem}
+.settings-row:last-child{border-bottom:none}
+.settings-row:hover{background:var(--surface-2)}
+/* 匯出/入的列是「標題 + 這個格式帶走什麼」兩行(見 index.html 該段註解)。
+   兩個 span 都要 display:block——按鈕的內容預設是 inline,不設會擠成一行。 */
+.settings-row-title{display:block}
+.settings-row-desc{display:block;font-family:var(--sans);font-size:0.6875rem;
+  color:var(--faint);line-height:1.45;margin-top:3px}
+
+/* 一列兩欄的區塊配對:兩張卡是同層級、互相對照的東西(兩個 AI 關鍵字動作、
+   介面語言 vs AI 生成語言、註冊模式 vs 白名單),並排比上下排更好比較,
+   也省掉設定分頁裡的長距離捲動。窄螢幕自己掉回單欄——設定 modal 在手機
+   只剩 ~340px 可用寬,硬排兩欄的話兩邊都塞不下。
+   ⚠ align-items 用預設的 stretch,不要改成 start:兩張卡的文字長度天生不一樣,
+   start 會讓它們一高一低、底緣參差,而它們是「同一層級的兩個選項」——高度不齊
+   讀起來像其中一個比較次要。stretch 讓兩張一樣高,內容照舊靠上排。 */
+.settings-duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.settings-panel>.settings-duo:first-child,
+.aimgr-editor>.settings-duo:first-child{margin-top:0}
+/* 格子已經負責間距了,子項自己的 margin 要歸零,否則兩欄的頂端會對不齊 */
+.settings-duo>.aimgr-editor+.aimgr-editor{margin-top:0}
+/* 卡片裡的欄位(如註冊模式的下拉、白名單的 textarea)有長有短,而每張卡底部
+   那排「儲存」要對齊——把卡做成直向 flex,再讓動作列 margin-top:auto 頂到底。 */
+.settings-duo>.aimgr-editor{display:flex;flex-direction:column}
+.settings-duo>.aimgr-editor>.tplmgr-editor-actions{margin-top:auto;padding-top:10px}
+@media (max-width:860px){
+  .settings-duo{grid-template-columns:1fr}
+  /* 單欄之後「一樣高」沒有意義了,還原成內容多高就多高 */
+  .settings-duo>.aimgr-editor{display:block}
+}
+
+/* 分頁內的群組標題(偏好設定的 語言/外觀、管理的 誰進得來/站台功能/使用者與團隊)。
+   視覺語彙沿用左側 nav 的 .settings-navgroup——同樣是「這底下是一群」的標籤,
+   長得一樣才不會被當成另一種東西。 */
+.settings-grouphead{font-family:var(--sans);font-size:0.6875rem;font-weight:600;
+  color:var(--faint);letter-spacing:.12em;text-transform:uppercase;user-select:none;
+  margin:20px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
+.settings-panel>.settings-grouphead:first-child{margin-top:0;padding-top:0;border-top:none}
+/* 群組標題底下那句「這一群在管什麼」。標題被轉大寫又加了寬字距,本身讀起來像
+   標籤而不是句子,光有它不夠說明四張卡為什麼被歸在一起。 */
+.settings-groupdesc{display:block;align-self:auto;line-height:1.5;margin:-4px 0 10px}
+/* ⚠ .aimgr-editor 之間的 12px 間距是靠 `.aimgr-editor + .aimgr-editor` 給的,
+   前一個兄弟只要不是 .aimgr-editor(例如兩欄並排的 .settings-duo)就整個不成立,
+   下一張卡會緊貼上一張——管理分頁的「Google 登入」曾經就這樣黏在註冊模式那組下面。
+   凡是會出現在卡片之間的區塊,都要在這裡補一條。 */
+.settings-duo+.aimgr-editor,
+.settings-duo+.settings-section,
+.settings-groupdesc+.aimgr-editor{margin-top:12px}
+.settings-grouphead+.settings-duo{margin-top:0}
+
+/* ── 標籤管理清單(設定 modal 的「標籤管理」分頁) ── */
+.tagmgr-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.tagmgr-toolbar .spacer{flex:1}
+/* 標籤一多就很難用肉眼找到要改名的那個;搜尋欄住在工具列(#tagManagerList 之外),
+   renderTagManager() 整包重繪時輸入值與焦點才不會被洗掉。 */
+.tagmgr-search{flex:0 1 220px;min-width:9em;padding:5px 10px;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);font-size:0.8125rem}
+.tagmgr-search:focus{outline:none;border-color:var(--amber)}
+/* 已分組/未分組各自一個 .tagmgr-section(標題 + 自己的格子容器),不共用同一份清單。
+   一列三組:標籤格子用 CSS grid 排三欄,格線靠容器底色 + 1px gap 做出來
+   (比逐格個別畫右框更不受「群組標頭跨欄」干擾 nth-child 計數)。
+   群組標頭(.tagmgr-group-head)跨滿整列,當作區段分隔線。 */
+.tagmgr-section + .tagmgr-section{margin-top:12px}
+/* 標題列右側掛著這一區專屬的分組動作(已分組→移出群組、未分組→加入群組),
+   所以要 align-items:center 而不是 baseline——按鈕跟文字對基線會浮起來半個字高。 */
+.tagmgr-section-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tagmgr-section-head .spacer{flex:1}
+/* 兩區一律都畫(理由見 settings.js:renderTagManager),空的那一區顯示這行 */
+.tagmgr-empty{grid-column:1/-1;background:var(--surface);padding:9px 12px;
+  font-family:var(--sans);font-size:0.75rem;color:var(--faint)}
+.tagmgr-section-title{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.tagmgr-list{border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  max-height:360px;overflow-y:auto;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.tagmgr-row{display:flex;align-items:center;gap:5px;padding:5px 10px;
+  background:var(--surface);min-width:0}
+.tagmgr-group-head .btn{padding:3px 7px;font-size:0.71875rem;flex-shrink:0}
+/* 重新命名/刪除是 icon-only:平常淡,hover 才亮起來,不跟標籤名搶注意力。
+   選擇器要帶 .btn 才蓋得過同樣掛在按鈕上的 .btn.icon(兩個 class,權重較高)。 */
+.btn.tagmgr-act{padding:2px 4px;font-size:0.78125rem;line-height:1;flex-shrink:0;color:var(--faint)}
+.btn.tagmgr-act:hover{background:var(--surface-2);color:var(--text)}
+.btn.tagmgr-act.danger:hover{background:var(--surface-2);color:var(--red)}
+.tagmgr-check{flex-shrink:0;accent-color:var(--amber)}
+.tagmgr-name{flex:1;font-size:0.8125rem;color:var(--text);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tagmgr-count{font-size:0.6875rem;color:var(--faint);white-space:nowrap}
+.tagmgr-group-head{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:5px 16px;
+  background:var(--surface-2)}
+.tagmgr-group-name{flex:1;font-size:0.78125rem;font-weight:700;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:900px){.tagmgr-list{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.tagmgr-list{grid-template-columns:1fr}}
+.tagmgr-footer{margin-top:11px;display:flex;justify-content:flex-end}
+/* 上面這一整套格子被 AI 自動分組建議的審核清單原樣沿用(見 settings.js:paintAutogroupReview)。
+   刻意共用而不是複製一份:那兩份東西是同一個物件——「一份依群組分節的標籤清單」,
+   兩份格線規則一定會漂移(同「渲染器絕不複製一份」那條)。所以**這裡的連動是目的
+   不是意外**:改欄數、改 max-height,兩個地方會一起變,那正是要的。
+   ⚠ 別因為審核清單很長就去拿掉 max-height:360px 的內捲——那個內捲是刻意繼承的,
+   沒有它,幾十個標籤會把設定面板整個拉長。也別為了省事寫 [class^="tagmgr-"]:
+   tagmgr-toolbar/tagmgr-footer 這些不在格子裡的東西會被一起掃到。 */
+label.tagmgr-row{cursor:pointer}   /* 審核清單的標籤列是 <label>,點整格都能勾 */
+/* 群組頭的內距比標籤列多 6px(16 vs 10),不補這行的話群組那顆全選框會比底下
+   整排的勾選框右移 6px,看起來像沒對齊。只作用在審核清單——直接改
+   .tagmgr-group-head 會讓 標籤管理 那份跟著位移。 */
+#autogroupList .tagmgr-group-head{padding-left:10px}
+
+/* ── 設定分頁裡的區塊卡(標籤管理的 AI 動作、回收桶、重複偵測、圖片壓縮、刪除內容共用) ── */
+.settings-section{margin-top:12px;padding:13px 14px;border:1px solid var(--border);
+  border-radius:12px;background:var(--surface-2)}
+/* 區塊卡當分頁的第一個元素時不留上緣空隙(如「回收桶」分頁) */
+.settings-panel>.settings-section:first-child{margin-top:0}
+.settings-section-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.settings-section-title{font-size:0.84375rem;font-weight:700;color:var(--text)}
+.settings-section-ctrl{display:flex;align-items:flex-end;gap:10px;margin-top:8px;flex-wrap:wrap}
+.settings-section-nlabel{display:flex;flex-direction:column;gap:4px;
+  font-size:0.71875rem;color:var(--faint)}
+.settings-section-nlabel input{width:88px;background:none;color:var(--text);
+  border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:0.84375rem}
+.settings-section-nlabel input:focus{outline:none;border-color:var(--amber)}
+/* 管理分頁裡成組的數字欄位(登入保護的四個門檻、備份的兩個參數)。
+   auto-fit + minmax:桌機自動排成一列多欄,窄螢幕自己掉成一欄,不必寫 media query。
+   ⚠ 這裡的 input 寬度要覆寫 .settings-section-nlabel 的 88px 固定寬,
+   否則格子撐開了、輸入框還是窄窄一條卡在左邊。 */
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:8px 12px;margin:8px 0}
+.admin-grid .settings-section-nlabel input{width:100%}
+.settings-section-result{margin-top:9px;font-size:0.8125rem}
+.reclass-status{padding:8px 10px;border-radius:6px;background:var(--surface);
+  color:var(--muted);margin-bottom:8px}
+.reclass-status.ok{color:var(--text)}
+.reclass-status.err{color:var(--red)}
+.reclass-section-title{font-size:0.71875rem;font-weight:700;color:var(--faint);
+  margin:10px 0 4px}
+.reclass-item{display:flex;align-items:baseline;gap:10px;padding:5px 2px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap}
+.reclass-item:last-child{border-bottom:none}
+.reclass-note{flex:1;min-width:120px;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis}
+.reclass-diff{font-size:0.78125rem;color:var(--muted);white-space:nowrap}
+label.reclass-item{cursor:pointer}
+label.reclass-item input{flex-shrink:0;align-self:center;accent-color:var(--amber)}
+.reclass-selectall{font-weight:700}
+.reclass-selectall .reclass-note{color:var(--muted);font-size:0.78125rem}
+.reclass-review{margin-top:4px}
+.reclass-apply-row{display:flex;justify-content:flex-end;margin:12px 0}
+/* AI 動作進度條(重組逐筆、自動分組逐批共用) */
+.ai-progress{height:8px;border-radius:5px;background:var(--surface);overflow:hidden;margin:2px 0 6px}
+.ai-progress-bar{height:100%;background:var(--amber);border-radius:5px;transition:width .2s ease;min-width:2px}
+.ai-progress-label{font-size:0.78125rem;color:var(--muted);margin-bottom:8px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reclass-status.warn{color:var(--amber)}
+/* 刪除內容(危險區,「整理與清理」分頁最底部):用紅色邊框與標題和上方的清理區塊區隔 */
+.settings-section-danger{border-color:var(--red)}
+.settings-section-danger .settings-section-title{color:var(--red)}
+/* 資源回收桶(設定 → 回收桶):標題列右側的「清空回收桶」靠右,清單沿用樣板管理的列樣式。
+   一列有「名稱＋刪除時間＋兩顆按鈕」,比樣板列擠得多——.tplmgr-name 的 min-width:0
+   會讓名稱在窄畫面被壓成 0 寬直接消失(手機上最先犧牲的偏偏是最重要的欄位),
+   所以這裡讓列可以換行,並給名稱一個 flex-basis 當作「擠不下就自己換一行」的門檻。 */
+.settings-section-head .btn{margin-left:auto}
+#trashList{margin-top:10px}
+#trashList .tplmgr-row{flex-wrap:wrap}
+#trashList .tplmgr-name{flex:1 1 220px}
+#trashList .tagmgr-count{white-space:nowrap}
+.settings-section-danger select{background:none;color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:7px 9px;font-size:0.84375rem}
+.settings-section-danger select option{background:var(--surface);color:var(--text)}
+
+/* ── 欄位樣板管理(設定 modal 的「欄位樣板」分頁) ── */
+.tplmgr-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.tplmgr-toolbar .spacer{flex:1}
+/* 工具列底下那行說明:.hint 預設 align-self:center(給 flex 用),這裡是區塊位置要靠左 */
+.tplmgr-toolbar + .hint{display:block;align-self:auto;margin-bottom:10px;line-height:1.4}
+.tplmgr-list{border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  max-height:380px;overflow-y:auto}
+.tplmgr-row{display:flex;align-items:center;gap:10px;padding:8px 14px;
+  border-bottom:1px solid var(--border)}
+.tplmgr-row:last-child{border-bottom:none}
+.tplmgr-name{flex:1;font-size:0.84375rem;color:var(--text);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tplmgr-badge{margin-left:8px;font-size:0.65625rem;color:var(--faint);
+  border:1px solid var(--border);border-radius:6px;padding:1px 6px;vertical-align:1px}
+.tplmgr-badge.off{color:var(--red);border-color:var(--red)}
+.tplmgr-row.is-disabled .tplmgr-name{color:var(--faint)}
+.tplmgr-editor{padding:11px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+.tplmgr-editor:last-child{border-bottom:none}
+.tplmgr-editor input[type=text]{width:100%;background:none;color:var(--text);border:none;
+  border-bottom:1px solid var(--border);padding:7px 2px;font-size:0.84375rem}
+.tplmgr-editor input[type=text]:focus{outline:none;border-color:var(--amber)}
+.tplmgr-editor input[readonly]{color:var(--faint)}
+.tplmgr-fields{margin-top:7px}
+.tplmgr-field{display:flex;gap:10px;align-items:center;margin-top:4px;border-radius:6px}
+.tplmgr-field input[type=text]{flex:1;min-width:0}
+.tplmgr-field .tpl-f-del{flex-shrink:0;padding:5px 9px}
+/* 拖曳握把:平常整列不可拖(否則搶掉輸入框的文字選取),壓在握把上才打開 draggable */
+.tplmgr-field .tpl-f-drag{flex-shrink:0;cursor:grab;color:var(--faint);
+  font-size:0.875rem;line-height:1;padding:2px;user-select:none}
+.tplmgr-field .tpl-f-drag:active{cursor:grabbing}
+.tplmgr-field.is-dragging{opacity:.45;background:var(--surface)}
+.tplmgr-field .tpl-f-on{flex-shrink:0;display:flex;align-items:center;cursor:pointer}
+.tplmgr-field .tpl-f-enabled{accent-color:var(--amber);cursor:pointer;margin:0}
+/* 停用的欄位:整列淡掉,但定義還在(值也還在名詞裡),不是刪除 */
+.tplmgr-field.is-off input[type=text]{color:var(--faint);text-decoration:line-through}
+.tplmgr-field.is-off .tpl-f-drag{opacity:.5}
+.tplmgr-editor-actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+.tplmgr-editor-actions .spacer{flex:1}
+/* 關於本專案的那幾列是「連結列」,不是其他分頁那種靠 .spacer 把儲存鈕頂到右邊的
+   動作列:標籤長、又有三顆並排,375px 的手機上會整列溢出被裁掉(實測 439px 塞進
+   309px,「更新紀錄」「複製環境資訊」「閱讀 SECURITY.md」三顆完全點不到)。
+   只在這個分頁允許換行——.tplmgr-editor-actions 本身維持 nowrap,那是右對齊要的。 */
+.settings-panel[data-panel="about"] .tplmgr-editor-actions{flex-wrap:wrap}
+.tplmgr-editor .hint{display:block;margin-top:7px}
+
+/* ── AI 生成設定(設定 modal 的「AI 生成」分頁) ── */
+.aimgr-editor{padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.aimgr-editor + .aimgr-editor{margin-top:12px}
+.aimgr-toggle{display:flex;align-items:center;gap:8px;font-size:0.84375rem;color:var(--text);margin-bottom:9px}
+.aimgr-toggle input{accent-color:var(--amber)}
+.aimgr-label{display:block;font-size:0.71875rem;color:var(--faint);margin:9px 0 3px}
+/* password/select 跟著 text 走同一組樣式:API 金鑰與 API 格式是同一張表單裡的欄位,
+   長得不一樣只會讓人以為它們的性質不同 */
+.aimgr-editor input[type=text],.aimgr-editor input[type=password],
+.aimgr-editor select,.aimgr-editor textarea{width:100%;background:none;color:var(--text);
+  border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:0.84375rem}
+.aimgr-editor input[type=text]:focus,.aimgr-editor input[type=password]:focus,
+.aimgr-editor select:focus,.aimgr-editor textarea:focus{outline:none;border-color:var(--amber)}
+.aimgr-editor select{appearance:none;cursor:pointer}
+.aimgr-editor select option{background:var(--surface);color:var(--text)}
+.aimgr-editor textarea{resize:vertical;line-height:1.5}
+.ai-model-row{display:flex;gap:8px;align-items:stretch}
+/* ⚠ min-width:0 不能省:flex item 預設 min-width:auto,而 <input> 的自動最小寬度來自
+   預設的 size=20(窄螢幕 --font-scale:1.8 之下約 250px),右邊的按鈕又是 flex:none,
+   兩個加起來超過可用寬度時被擠出畫面的是**按鈕**,而 .modal-box 是 overflow-x:hidden,
+   於是「列出模型」在手機上直接看不見。 */
+.ai-model-row input[type=text],.ai-model-row input[type=password]{flex:1;min-width:0}
+.ai-model-row .btn{flex:none;white-space:nowrap}
+/* 「列出模型」後出現的勾選清單:一列一個模型,右側「聊天/嵌入」兩欄 radio。
+   radio 只是快速填入,寫回上方輸入框;輸入框才是存檔的真相 */
+.ai-models-picker{margin-top:9px}
+.ai-models-list{margin-top:6px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);max-height:240px;overflow-y:auto;overflow-x:auto}
+/* 每列各自是一個 grid,欄寬必須固定才會跨列對齊(auto 會讓表頭與資料列錯位)。
+   ⚠ 那個「固定」必須用 rem 不能用 em:em 是相對**該元素自己的** font-size,而
+   .ai-mp-head 覆寫了更小的字級——用 em 的話表頭與資料列的欄寬本來就對不齊(桌機
+   80.5px vs 91px),而且窄螢幕 --font-scale:1.8 之下 7em×2 = 327px 直接超過可用的
+   287px,被 .modal-box 的 overflow-x:hidden 裁掉整個「嵌入」欄(點不到)。 */
+.ai-mp-row{display:grid;grid-template-columns:minmax(0,1fr) 3rem 3rem;align-items:center;
+  gap:8px;padding:4px 10px;font-size:0.8125rem;color:var(--text)}
+.ai-mp-row + .ai-mp-row{border-top:1px solid var(--border)}
+.ai-mp-head{position:sticky;top:0;background:var(--surface-2);font-size:0.71875rem;
+  color:var(--faint)}
+.ai-mp-name{overflow-wrap:anywhere}
+.ai-mp-none{color:var(--faint)}
+.ai-mp-cell{text-align:center}
+.ai-mp-cell input[type=radio]{accent-color:var(--amber);cursor:pointer}
+/* .hint 預設 align-self:center(給 flex 用);這一區的提示是區塊,要靠左並能換行 */
+.aimgr-editor .hint{display:block;align-self:auto;margin-top:6px;line-height:1.45}
+/* ── 偏好設定:主題色票。底色/文字色由 settings.js 依 theme.js 的預覽色寫 inline
+   (它是「這個選項長什麼樣」的縮圖,刻意不跟著當前主題變);選中態照慣例用 .on ── */
+.theme-swatch-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.theme-swatch{display:flex;flex-direction:column;align-items:center;gap:4px;
+  width:5.5rem;padding:10px 6px 8px;border:2px solid var(--border);border-radius:10px;
+  cursor:pointer;font-family:inherit}
+.theme-swatch:hover{border-color:var(--muted)}
+.theme-swatch.on{border-color:var(--amber)}
+.theme-swatch-sample{font-size:1.125rem;font-weight:700;line-height:1}
+.theme-swatch-name{font-size:0.6875rem;opacity:.78}
+/* 語意檢索分頁的索引狀態 */
+.sem-status{margin:10px 0;padding:9px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);font-size:0.8125rem;line-height:1.6;color:var(--text)}
+.sem-status:empty{display:none}
+/* 樣板編輯區的 AI 指示欄位 */
+.tplmgr-editor .tpl-ai-mode,.tplmgr-editor .tpl-ai-prompt{width:100%;background:none;color:var(--text);
+  border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:0.8125rem}
+.tplmgr-editor .tpl-ai-mode:focus,.tplmgr-editor .tpl-ai-prompt:focus{outline:none;border-color:var(--amber)}
+.tplmgr-editor .tpl-ai-prompt{resize:vertical;line-height:1.5;font-family:var(--sans)}
+.tplmgr-editor .tpl-ai-mode option{background:var(--surface);color:var(--text)}
+
+/* ── 外掛模組管理(設定 → 外掛模組):分類分區 + 左右兩欄卡片 ──
+   兩欄用 grid 而不是 flex:卡片高度隨說明長短不一,grid 的 align-items:start
+   讓同一列的兩張卡各自貼齊頂端,不會互相撐高。窄螢幕(≤640px)收成單欄。 */
+.plugmgr-cat + .plugmgr-cat{margin-top:18px}
+.plugmgr-cat-title{font-size:0.78125rem;color:var(--faint);margin-bottom:8px;
+  padding-left:2px;letter-spacing:.03em}
+.plugmgr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.plugmgr-card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;
+  background:var(--surface-2);display:flex;flex-direction:column;gap:8px;min-width:0}
+.plugmgr-head{display:flex;align-items:center;gap:10px}
+.plugmgr-head .btn{flex:none;margin-left:auto;white-space:nowrap}
+/* 說明(120字內):.hint 預設 align-self:center(給 flex 用),卡片裡是區塊要靠左換行 */
+.plugmgr-desc{display:block;align-self:auto;line-height:1.5}
+/* 已安裝外掛的設定編輯區:卡片內再一層,底色退回 surface 做出層次 */
+.plugmgr-card .tplmgr-editor{border:1px solid var(--border);border-radius:8px;
+  padding:10px;background:var(--surface)}
+@media (max-width:640px){.plugmgr-grid{grid-template-columns:1fr}}
+/* 卡片標題可點開詳細頁(介紹/圖片/GIF);版本號跟在名稱後、弱化呈現 */
+.plugmgr-title{cursor:pointer}
+.plugmgr-title:hover{text-decoration:underline}
+.plugmgr-ver{font-size:0.71875rem;color:var(--faint);margin-left:6px;font-weight:400}
+/* 「已停用」徽章:比照 tplmgr-badge 但用警示色,一眼看得出跟「已安裝」不同 */
+.plugmgr-badge-off{color:var(--amber);border-color:var(--amber)}
+/* admin 區(上傳封裝 + 壞封裝清單),排在整頁最下方(型錄 → 教學 → 上傳) */
+.plugmgr-admin{margin-top:14px}
+.plugmgr-errs{display:block;align-self:auto;line-height:1.6;margin-top:8px;
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+/* ── 「自己做一個外掛」教學(收合,見 settings.js:pluginGuideHTML) ──
+   用原生 <details>,不自己寫展開狀態:鍵盤操作與 Ctrl+F 頁內搜尋都是免費的。 */
+.plugguide{border:1px solid var(--border);border-radius:12px;background:var(--surface-2);
+  margin-top:14px;overflow:hidden}
+.plugguide>summary{cursor:pointer;padding:10px 14px;font-size:0.84375rem;color:var(--text);
+  list-style:none;user-select:none}
+.plugguide>summary::-webkit-details-marker{display:none}
+/* 自己畫三角形:原生 marker 在各瀏覽器長得不一樣,而且沒辦法跟著 --faint 走 */
+.plugguide>summary::before{content:"▸";display:inline-block;width:1.1em;color:var(--faint)}
+.plugguide[open]>summary::before{content:"▾"}
+.plugguide>summary:hover{background:var(--surface)}
+.plugguide-body{padding:2px 14px 14px;border-top:1px solid var(--border)}
+.plugguide-step{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:0.84375rem}
+/* 步驟編號:圓形徽章,固定寬高才不會被中文步驟標題的行高撐成橢圓 */
+.plugguide-n{flex:none;width:1.5em;height:1.5em;border-radius:50%;background:var(--amber);
+  color:var(--on-accent);font-size:0.75rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px}
+.plugguide-step .hint{display:block;align-self:auto;margin-top:3px;line-height:1.5}
+/* 範例 manifest:複製鈕疊在右上角(常駐,不是 hover 才出現——觸控裝置沒有 hover,
+   同編輯器附件縮圖移除鈕的取捨)。程式碼橫向自己捲,不撐破設定 modal。 */
+.plugguide-code{position:relative;margin:10px 0 2px}
+.plugguide-code pre{margin:0;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;overflow-x:auto;
+  font-family:var(--mono);font-size:0.71875rem;line-height:1.5;color:var(--muted)}
+.plugguide-code .btn{position:absolute;top:6px;right:6px;background:var(--surface-2);
+  padding:3px 9px;font-size:0.71875rem}
+.plugguide-rules{display:block;align-self:auto;line-height:1.6;margin-top:12px;
+  border-left:2px solid var(--amber);padding-left:10px}
+
+/* 詳細頁 modal:寬度收窄(內容是介紹文與圖片,不需要整個螢幕),圖片直排 */
+.plugmgr-detail{max-width:560px;margin:0 auto}
+.plugmgr-detail h3{margin:0 0 6px}
+.plugmgr-intro{line-height:1.7;margin:10px 0;white-space:normal}
+.plugmgr-detail-img{display:block;max-width:100%;border:1px solid var(--border);
+  border-radius:8px;margin:10px 0}
+
+/* ── markdown 編輯器 ── */
+.mdeditor{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface-2)}
+.mdtoolbar{display:flex;align-items:center;gap:6px;padding:6px 8px;
+  border-bottom:1px solid var(--border);background:var(--surface-2)}
+.mdbtn{background:none;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);font-size:0.75rem;padding:3px 9px;font-family:var(--mono)}
+.mdbtn:hover{border-color:var(--muted);color:var(--text)}
+.mdbtn:disabled{opacity:.4;cursor:default;pointer-events:none}
+/* 原始碼模式切換鈕開啟時的按下狀態 */
+.mdbtn.active{background:var(--amber);border-color:var(--amber);color:var(--on-accent)}
+/* 工具列收合的小三角只在窄螢幕存在(見下方 640px 區塊):桌機一列放得下 13 個
+   控制項,多一顆切換鈕只是噪音,而 .collapsed 在桌機沒有任何規則對應。 */
+.mdtoolbar-toggle{display:none}
+/* 程式碼區塊的語言下拉:游標在區塊裡就是改那一塊,不在就是決定下一塊用什麼語言 */
+.mdlang{background:none;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);font-size:0.6875rem;padding:3px 4px;font-family:var(--mono);max-width:110px}
+.mdlang:hover{border-color:var(--muted);color:var(--text)}
+.mdlang:disabled{opacity:.4;cursor:default}
+.mdlang option{background:var(--surface);color:var(--text)}
+.mdcontent{min-height:90px;padding:10px 12px;font-size:0.875rem;line-height:1.6;outline:none;background:var(--surface-2)}
+.mdcontent:empty:before{content:attr(data-placeholder);color:var(--faint)}
+.mdcontent img{max-width:100%;border-radius:8px;margin:6px 0;display:block}
+/* 編輯中的程式碼區塊:白底等寬、保留縮排;pre.cb 的共用樣式在上面的程式碼區塊段落 */
+.mdcontent pre.cb{white-space:pre;tab-size:2}
+.mdcontent code{font-family:var(--mono);font-size:0.8125rem;background:var(--surface);
+  border-radius:4px;padding:1px 5px;color:var(--amber)}
+/* Markdown 原始碼編輯模式(見 editor.js 的 mdsource 切換):跟 .mdcontent 同高、
+   等寬字型、不換行自動縮排,取代 contenteditable 顯示原始儲存格式 */
+.mdsource{width:100%;min-height:150px;padding:10px 12px;font-size:0.8125rem;line-height:1.6;
+  border:none;outline:none;background:var(--surface-2);color:var(--text);
+  font-family:var(--mono);resize:vertical}
+
+/* ── 表格(說明欄貼上/輸入的表格,詳細頁與編輯器共用) ── */
+.mdtable-wrap{overflow-x:auto;margin:8px 0}
+.mdtable{width:100%;border-collapse:collapse;font-size:0.875rem}
+.mdtable th,.mdtable td{border:1px solid var(--border);padding:6px 10px;text-align:left;
+  vertical-align:top}
+.mdtable th{background:var(--surface-2);font-weight:600;white-space:nowrap}
+
+/* ── 引文區塊("> " 語法;「一段話解讀」外掛用它呈現被解讀的原文) ── */
+.mdquote{margin:8px 0;padding:8px 14px;border-left:3px solid var(--amber);
+  background:var(--surface-2);border-radius:0 8px 8px 0;color:var(--muted)}
+/* 卡片預覽:引文常是整段原文,收成最多 3 行別吃掉卡片版面,完整內容留給詳細頁 */
+.card .mdquote{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+  overflow:hidden;margin:4px 0;font-size:0.875rem}
+
+/* ── 卡片工具列(桌機 hover 顯示,編輯/刪除為 icon-only 按鈕、上下堆疊) ── */
+.card-toolbar{display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+  position:absolute;top:11px;right:0;
+  opacity:0;transform:translateX(10px);pointer-events:none;
+  transition:opacity .15s ease,transform .15s ease}
+.card:hover .card-toolbar,.card:focus-within .card-toolbar{
+  opacity:1;transform:translateX(0);pointer-events:auto}
+.ctbtn{background:none;border:none;color:var(--faint);font-size:0.9375rem;line-height:1;
+  padding:2px 4px;border-radius:6px}
+.ctbtn:hover{background:var(--surface-2);color:var(--text)}
+.ctbtn.danger:hover{background:var(--surface-2);color:var(--red)}
+
+/* 編輯器頂端那一列:樣板下拉(見 editor.js)。 */
+.e-head-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+/* flex-basis:0 讓下拉佔滿剩餘寬度(蓋過 .editor select 的 width:100%),
+   min-width:0 是窄螢幕不被長選項撐破的那道保險 */
+.e-head-row select{flex:1 1 0;min-width:0;font-size:0.8125rem;padding:3px 6px}
+/* 站台註冊邀請連結(管理分頁)。 */
+.invmgr-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:7px 0;border-top:1px dashed var(--border)}
+.invmgr-url{flex:1 1 220px;font-family:var(--mono,monospace);font-size:0.75rem;
+  background:none;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:5px 8px}
+/* 中繼資料(剩餘次數·到期日)自己佔一整行,不跟網址與兩顆按鈕搶寬度 */
+.invmgr-meta{flex:0 0 100%;margin:0}
+/* 範例資料的置頂行(views/demobanner.js)。z-index 要高過 .scanner 的 5,
+   它是整頁最上面那一列。左右 padding 與 .wrap 對齊,文字才不會貼著螢幕邊。 */
+/* 字級刻意比內文(0.875rem)小一階:它是暫時性的通知列、不是內容,而且在手機的
+   --font-scale(1.8)底下每一階都會被放大將近兩倍——用內文字級會讓一列通知長期
+   佔掉四分之一個螢幕。仍然是 rem,跟著使用者的字級偏好縮放(main.css 禁 px)。
+   padding/gap 用 em,跟著這個字級走而不是跟著根字級。 */
+.demo-banner{position:sticky;top:0;z-index:20;display:flex;align-items:center;
+  gap:0.5em 0.75em;flex-wrap:wrap;justify-content:center;padding:0.6em 1.2em;
+  font-size:0.75rem;line-height:1.45;
+  background:rgba(255,193,7,.16);border-bottom:1px solid rgba(255,193,7,.38)}
+.demo-banner-text{flex:0 1 auto}
+.demo-banner a{color:inherit}
+/* 按鈕不吃 .btn 的預設 padding(那是為工具列的點擊面積設的,在通知列裡會多撐一圈) */
+.demo-banner .btn{flex:0 0 auto;padding:0.35em 0.8em;font-size:1em;
+  border:1px solid rgba(255,193,7,.5);color:inherit}
+
+/* 邀請橫幅:登入畫面上方,收到連結的人第一眼要看到的東西 */
+.auth-invite{margin:10px 0 14px;padding:10px 12px;border-radius:8px;font-size:0.8125rem;
+  line-height:1.5;background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.35)}
+.auth-invite.invalid{background:rgba(220,53,69,.12);border-color:rgba(220,53,69,.35)}
+
+/* ── 公開分享連結面板(就地插在詳細頁內容底部,不另開 modal) ── */
+.share-box{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.share-box h3{font-size:0.8125rem;font-weight:600;color:var(--muted);margin:0 0 10px}
+.share-url-row{display:flex;gap:8px;align-items:center}
+.share-url{flex:1;min-width:0;font-family:var(--sans);font-size:0.75rem;
+  padding:7px 10px;border:1px solid var(--border);border-radius:6px;
+  background:var(--surface-2);color:var(--text)}
+.share-hint{font-family:var(--sans);font-size:0.71875rem;color:var(--faint);
+  margin:10px 0 0;line-height:1.6}
+.share-hint.warn{color:var(--red)}
+.share-acts{display:flex;gap:8px;margin-top:12px}
+
+/* ── 公開分享頁(static/share.html,獨立的一頁) ── */
+.share-page .share-wrap{max-width:46rem;margin:0 auto;padding:40px 20px 60px}
+.share-page .share-card .modal-box{position:relative;max-width:none}
+.share-by{font-family:var(--sans);font-size:0.75rem;color:var(--faint);margin:-4px 0 14px}
+.share-missing{text-align:center;padding:80px 20px;color:var(--muted)}
+.share-missing h1{font-size:1.25rem;margin-bottom:12px}
+.share-foot{text-align:center;font-family:var(--sans);font-size:0.71875rem;
+  color:var(--faint);margin-top:30px}
+/* ── 公開筆記快照頁(publish.html;共用 .share-page 的外殼)── */
+.pub-toolbar{margin:6px 0 16px}
+/* 列表態:一筆名詞一顆整行按鈕(整頁只有「點進去看」一個動作,做成真按鈕
+   才能被 Tab 走到;不用 <a>——切換是純前端狀態,沒有可分享的子網址)。 */
+.pub-item{display:block;width:100%;text-align:left;background:none;cursor:pointer;
+  font-family:inherit;font-size:0.9375rem;color:var(--text);line-height:1.5;
+  padding:9px 4px;border:none;border-top:1px dashed var(--border)}
+.pub-item:hover{color:var(--amber)}
+.pub-back{margin-bottom:14px}
+/* 設定 → 公開筆記:發佈表單的三個輸入框(沿用 .aimgr-editor 的欄位間距語彙) */
+#pubMgrForm input{display:block;width:100%;margin-top:8px;background:none;
+  color:var(--text);border:1px solid var(--border);border-radius:6px;
+  padding:7px 10px;font-size:0.8125rem}
+#pubMgrForm input:focus{outline:none;border-color:var(--amber)}
+
+/* ── 附件 ── */
+.attach-item{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:0 6px 6px 0;
+  font-size:0.8125rem;color:var(--text);text-decoration:none;cursor:pointer}
+.attach-item:hover{border-color:var(--muted)}
+.attach-item .x{margin-left:2px;cursor:pointer;opacity:.7;background:none;border:none;font-size:0.75rem;color:inherit}
+.attach-item .x:hover{opacity:1}
+.attach-editor{display:flex;flex-direction:column;gap:8px}
+.attach-row-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.attach-desc{flex:1;min-width:160px;background:none;border:none;border-bottom:1px solid var(--border);
+  font-size:0.78125rem;padding:5px 2px;color:var(--text)}
+.attach-desc:focus{outline:none;border-color:var(--amber)}
+.attach-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.attach-badge{font-size:0.75rem;color:var(--faint);white-space:nowrap}
+.detail-attach{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.detail-attach h3{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.attach-block{margin:0 0 10px 0}
+.attach-desc-view{font-size:0.78125rem;color:var(--muted);margin:4px 0 0 2px}
+/* 圖片附件的縮圖(貼上的圖片現在存成附件,見 editor.js 的 paste)。
+   編輯器版本在右上角疊一顆移除鈕;詳細頁版本是連結,點了開原圖。
+   移除鈕刻意「常駐」而不是 hover 才出現——觸控裝置沒有 hover 可用。 */
+.attach-thumb{position:relative;display:inline-block;flex:none;vertical-align:top;
+  width:96px;height:72px;border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;background:var(--surface-2);cursor:pointer}
+.attach-thumb:hover{border-color:var(--muted)}
+.attach-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.attach-thumb .x{position:absolute;top:3px;right:3px;width:18px;height:18px;padding:0;margin:0;
+  border:none;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:0.625rem;
+  line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  opacity:.8;transition:opacity .15s ease}
+.attach-thumb .x:hover{opacity:1;background:rgba(0,0,0,.75)}
+/* 詳細頁:圖片附件橫向排開(多張就是多張縮圖),檔案附件維持一行一個 */
+.detail-attach .attach-thumb{width:140px;height:105px}
+.attach-block.is-image{display:inline-block;vertical-align:top;margin:0 10px 10px 0}
+.attach-block.is-image .attach-desc-view{max-width:140px}
+.detail-desc{margin-top:14px;font-size:0.90625rem;line-height:1.65;color:var(--text);overflow-wrap:break-word}
+.detail-desc img{max-width:100%;border-radius:8px;margin:6px 0;display:block}
+.detail-desc a,.mdcontent a{color:var(--amber);text-decoration:underline;text-underline-offset:2px}
+.detail-desc a:hover,.mdcontent a:hover{opacity:.8}
+/* 項目符號/編號清單(見 markdown.js:listBlockHtml),詳細頁與編輯器共用。
+   .mdcontent ol/ul 也要列:編輯器工具列的清單鈕走 execCommand,產生的是**裸**
+   <ol>/<ul>(沒有 class),只綁 .mdlist 的話會被最上面的 * reset 吃掉縮排——
+   看起來就是「按了清單卻貼齊左邊」;存檔重載後經 mdToHtml 才長出 .mdlist。 */
+.mdlist,.mdcontent ol,.mdcontent ul{margin:8px 0;padding-left:1.5em}
+.mdlist li,.mdcontent li{margin:2px 0}
+.detail-meta{font-family:var(--sans);font-size:0.71875rem;color:var(--faint);margin-top:4px}
+.detail-history{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.detail-history h3{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.detail-tags{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.detail-tags .tag{cursor:pointer}
+.detail-tags .tag:hover:not(.selected){background:var(--surface-2)}
+.detail-tags h3{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.hist-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:0.8125rem;flex-wrap:wrap}
+.hist-date{font-family:var(--mono);font-size:0.71875rem;color:var(--faint);white-space:nowrap}
+.hist-name{color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-restore{font-size:0.75rem;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.hist-restore:hover{border-color:var(--muted)}
+.hist-empty{color:var(--faint);font-size:0.78125rem}
+
+/* ── 名詞連結 [[名詞]] ──
+   已建立的用虛線底線(跟外部連結的實線區隔:這是庫內的邊,不會離開頁面);
+   尚未建立的降成 faint 並加問號游標,一眼看得出「這條線還沒接上」。
+   ⚠ 卡片預覽渲染成 <span class="wikilink">(不掛 <a>,卡片本身就是可點的),
+   所以這幾條規則不能寫成 a.wikilink。 */
+.wikilink{color:var(--amber);border-bottom:1px dashed currentColor;cursor:pointer;
+  text-decoration:none;padding-bottom:1px}
+.wikilink:hover{border-bottom-style:solid}
+.wikilink.missing{color:var(--faint);border-bottom-style:dotted}
+.wikilink.missing:hover{color:var(--muted);border-bottom-style:dotted}
+.card .wikilink{cursor:inherit}  /* 卡片上是純樣式,不是可點的連結,別給假訊號 */
+/* flat:共用庫與公開分享頁的連結。刻意**不查表**,所以既不是 amber 的「已建立」
+   也不是 faint 的「尚未建立」——那兩種樣式都會洩漏「我自己有沒有這個名詞」,
+   而且在別人的內容上根本沒有意義(見 markdown.js:wikiToHtml)。 */
+.wikilink.flat{color:var(--muted);border-bottom-style:dotted;cursor:default}
+.wikilink.flat:hover{border-bottom-style:dotted;color:var(--muted)}
+
+/* 詳細頁的「相關名詞」:出現的連結 + 反向連結 */
+.detail-links:not(:empty){margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.wl-head,.wl-group h3{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.wl-group{margin-bottom:12px}
+.wl-group h3{margin-top:4px}
+.wl-chips{display:flex;flex-wrap:wrap;gap:6px}
+.wl-chip{font-size:0.78125rem;padding:3px 10px;border-radius:999px;
+  border:1px solid var(--border);background:none;color:var(--amber)}
+.wl-chip:hover{border-color:var(--amber)}
+.wl-chip.missing{color:var(--faint);border-style:dashed}
+.wl-chip.missing:hover{color:var(--muted);border-color:var(--muted)}
+
+/* 編輯器的名詞連結挑選器(工具列 [[ ]] 或打出 "[[" 叫出來) */
+/* top 由 JS 在開啟時算(貼在說明欄工具列下方);定位基準是 .editor */
+.wl-picker{position:absolute;z-index:20;left:16px;width:min(280px,calc(100% - 32px));
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.14);padding:6px}
+.wl-picker input{width:100%;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:7px;padding:7px 9px;font-size:0.8125rem}
+.wl-picker-list{max-height:210px;overflow-y:auto;margin-top:5px}
+.wl-opt{padding:6px 9px;border-radius:6px;font-size:0.8125rem;color:var(--text);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-opt:hover,.wl-opt.hl{background:var(--surface-2)}
+.wl-opt.create{color:var(--amber)}
+.wl-opt.empty{color:var(--faint);cursor:default}
+.wl-opt.empty:hover{background:none}
+
+/* ── 編輯器的「你可能已經記過這個」 ── */
+.dupwarn{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;
+  padding:8px 10px;border:1px dashed var(--border);border-radius:10px;background:var(--surface-2)}
+.dupwarn-head{font-size:0.78125rem;color:var(--muted)}
+.dupwarn-chip{display:inline-flex;align-items:baseline;gap:6px;font-size:0.78125rem;
+  padding:3px 10px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface);color:var(--amber)}
+.dupwarn-chip:hover{border-color:var(--amber)}
+.dupwarn-why{font-size:0.6875rem;color:var(--faint)}
+
+/* ── 設定 → 內容:重複偵測 ── */
+.dedup-summary{font-size:0.8125rem;color:var(--muted);margin-bottom:10px}
+.dedup-group{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.dedup-group-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.dedup-why{font-size:0.6875rem;color:var(--faint);border:1px solid var(--border);
+  border-radius:999px;padding:1px 8px}
+.dedup-item{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:0.8125rem}
+.dedup-keep,.dedup-take{display:inline-flex;align-items:center;cursor:pointer}
+.dedup-name{background:none;border:none;color:var(--amber);font-size:0.8125rem;padding:0;
+  white-space:nowrap;max-width:14em;overflow:hidden;text-overflow:ellipsis}
+.dedup-name:hover{text-decoration:underline}
+.dedup-excerpt{flex:1;min-width:0;color:var(--faint);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.dedup-actions{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+
+/* ── 設定 → 整理與清理:內容健康度檢查 ──
+   刻意沿用重複偵測的 .dedup-group / .dedup-name / .dedup-excerpt 骨架(同一個
+   分頁裡兩份長得不一樣的清單只會讓人以為是兩種東西),只加「嚴重度徽章」這一件
+   重複偵測沒有的事。⚠ 嚴重度是這一頁唯一的顏色語意,三級都要有各自的顏色,
+   否則使用者得逐字讀標籤才分得出「壞了」跟「待整理」。 */
+.health-group{border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;margin-bottom:10px}
+.health-group-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.health-sev{font-size:0.6875rem;border-radius:999px;padding:1px 8px;
+  border:1px solid currentColor;flex:none}
+.health-sev.error{color:var(--red)}
+.health-sev.warn{color:var(--amber)}
+.health-sev.info{color:var(--faint)}
+.health-kind{font-size:0.8125rem;color:var(--text);font-weight:700}
+/* 數量靠右,等寬數字讓多組並排時對得齊 */
+.health-count{margin-left:auto;font-size:0.8125rem;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.health-hint{font-size:0.71875rem;color:var(--faint);line-height:1.6;margin:6px 0 8px}
+.health-item{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:0.8125rem}
+/* 孤兒檔沒有名詞可跳,名稱是純文字——寬度規則要跟 .dedup-name 對齊,
+   不然同一組裡可跳與不可跳的兩種列會左右參差 */
+.health-name{color:var(--muted);white-space:nowrap;max-width:14em;
+  overflow:hidden;text-overflow:ellipsis}
+.health-more{font-size:0.71875rem;color:var(--faint);margin-top:6px}
+/* 「清除這一類」靠右,與上方的數量對齊。只有三類會出現這顆(見 settings.js 的
+   CLEANABLE_KINDS);用 danger 紅框是刻意的——它會刪東西,即使有 ZIP 存證兜底。 */
+.health-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.health-clean{font-size:0.75rem;padding:0.3em 0.9em;
+  border:1px solid var(--red);color:var(--red)}
+.health-clean:hover:not(:disabled){background:color-mix(in srgb,var(--red) 12%,transparent)}
+.health-clean:disabled{opacity:.5}
+
+/* ── 詳細內容 modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(20,20,18,.45);
+  z-index:50;align-items:flex-start;justify-content:center;padding:56px 24px;
+  /* 淡入淡出靠 @starting-style + allow-discrete(見下),JS 一行都不用動;
+     舊瀏覽器不認這兩個字 → 瞬開瞬關,跟沒加之前完全一樣(漸進增強)。
+     ⚠ .modal-box 絕不加 transform 型入場動畫:詳細頁畫重點工具列是
+     position:fixed,祖先一有 transform 定位基準就變成它,整條工具列跑位。 */
+  opacity:0;transition:opacity .15s ease,display .15s allow-discrete}
+.modal-overlay.show{display:flex;opacity:1}
+@starting-style{.modal-overlay.show{opacity:0}}
+/* position:relative 只是給 .modal-close 當定位基準,不要在這裡加 left/top ——
+   那會把「所有」共用 .modal-box 的彈窗(詳細/設定/未分組)一起相對位移,
+   手機視窗只有 375px,推幾十 px 就等於右邊被裁掉一整條(曾經寫死 left:96px,
+   桌機看不太出來,手機直接跑版)。要挪位置請改 .modal-overlay 的 padding。
+   min-width:0:box 是 overlay 的 flex item,預設 min-width:auto 會讓任何不可
+   縮的子孫(寬表格、長 ASCII 字串)把整個彈窗撐得比視窗還寬。 */
+.modal-box{background:var(--surface);border:none;border-radius:16px;
+  max-width:920px;width:100%;min-width:0;max-height:calc(100vh - 68px);overflow-y:auto;overflow-x:hidden;
+  padding:40px 49px;position:relative;
+  box-shadow:0 30px 70px rgba(0,0,0,.2)}
+.modal-box h2{font-size:1.375rem;font-weight:700;margin-bottom:12px;padding-right:36px;overflow-wrap:break-word}
+.modal-close{position:absolute;right:20px;top:20px}
+
+/* min-height:501px:手機橫放(矮螢幕)要走手機版的滿版彈窗,不加這個守門,
+   下面 id+class 的高權重會蓋掉手機區塊的 max-width:100%,而 calc(100vh-148px)
+   在 360px 高的螢幕上只剩 212px 內容——「橫放被壓縮」的最大元凶。 */
+@media (min-width:641px) and (min-height:501px){
+  /* PC 版詳細頁 modal 往下推 68px(margin-top)。max-height 必須跟著算:
+     overlay 上下 padding(56+24)+ margin-top 68 = 148px,扣掉剛好貼到底部留白。
+     ⚠ 兩個數字要同步改——曾經 margin-top 改小了、max-height 卻還扣著舊的 150px,
+     內容長的名詞顯示範圍整整少了一截(上下合計浪費近 240px)。
+     只加 margin-top 不扣 max-height 的話,box 會被推出視窗底部,且沒有整頁捲軸
+     救得回來(.modal-overlay 沒設 overflow)。只作用在詳細頁,編輯器/設定/
+     未分組標籤三個共用 .modal-overlay 的彈窗不受影響。 */
+  #detailModal .modal-box{margin-top:19px;max-height:calc(100vh - 148px)}
+  /* 詳細頁行寬由「外框寬度」決定,不是內欄自己設限——以前外框固定 920px、只縮
+     內欄,窄版看起來就是「大框框裡一條細字」,左右白到有點空。
+     窄版(預設):720 − 2×28 padding ≈ 664px,約 42 全形字,跟改版前的內欄寬度
+     幾乎一樣,所以行長沒變,只是框收起來貼住文字。寬版:920px(約 62 字)。
+     ⚠ 必須留在這個 @media 裡:#detailModal .modal-box 的權重(id+class)高於
+     640px 區塊的 .modal-box{max-width:100%},搬出去會讓手機版彈窗不再滿版。 */
+  #detailModal .modal-box{max-width:720px}
+  #detailModal.wide .modal-box{max-width:920px}
+}
+
+/* ── 圖片檢視器(卡片縮圖點下去的 lightbox,見 js/components/lightbox.js) ──
+   刻意不共用 .modal-overlay/.modal-box:那組長得像「紙」(白底、圓角、內距、
+   max-width:920px),而看圖要的是滿版暗底把圖片襯出來、不留任何邊框裝飾。
+   z-index 高於 .hl-toolbar(60)與手機篩選抽屜(70):它永遠是最上層的那一層,
+   從詳細頁裡開起來時也不能被畫重點工具列蓋住(app.js 的 Esc 鏈同樣把它排第一)。
+   顏色寫死不吃主題變數:看圖的背景在深淺主題都該是暗的,不然淺色主題下白底
+   會把圖片的白邊吃掉、也刺眼。 */
+/* overflow:hidden —— 放大後的圖片是靠 transform 溢出的(transform 不改變版面,
+   所以 stage 的尺寸不會跟著變大)。不裁掉的話溢出的部分會把整個頁面撐出捲軸,
+   而這是一層 position:fixed 的滿版遮罩,捲軸出現在它底下的頁面上,看起來就像壞了。 */
+.viewer-overlay{display:none;position:fixed;inset:0;z-index:80;overflow:hidden;
+  background:rgba(12,12,14,.92);align-items:center;justify-content:center;
+  padding:56px 64px;gap:8px}
+.viewer-overlay.show{display:flex}
+/* min-width/min-height:0 —— stage 是 flex item,預設 min-*:auto 會讓大圖把自己
+   撐得比視窗還大,object-fit 也救不回來(它只管圖在框裡怎麼擺,不管框多大)。 */
+.viewer-stage{display:flex;flex-direction:column;align-items:center;gap:12px;
+  min-width:0;min-height:0;max-width:100%;max-height:100%}
+/* will-change:transform —— 縮放/平移每一格都在改 transform,先提升成合成層,
+   大圖拖曳才不會一格一格跳。⚠ 不要加 transition:transform:滾輪與拖曳是連續事件,
+   補間會讓畫面永遠落後手指一拍(縮放的手感問題,不是效能問題)。 */
+.viewer-stage img{max-width:100%;min-height:0;flex:1 1 auto;object-fit:contain;
+  border-radius:6px;background:rgba(255,255,255,.04);will-change:transform}
+/* 放大後才可拖曳,游標要說得出來。原生的「拖曳圖片另存」在這個狀態下會搶走
+   滑鼠事件,所以一併關掉(mousedown 的 preventDefault 是同一件事的另一半)。 */
+.viewer-stage img.zoomed{cursor:grab;-webkit-user-drag:none;user-select:none}
+.viewer-stage img.zoomed:active{cursor:grabbing}
+
+/* 縮放控制列:左上角,與右上角的關閉鈕對稱 */
+.viewer-zoom{position:absolute;top:16px;left:16px;display:flex;align-items:center;
+  gap:2px;background:rgba(255,255,255,.12);border-radius:999px;padding:2px}
+.viewer-zoom button{border:none;background:none;color:#fff;cursor:pointer;
+  line-height:1;border-radius:999px;font-size:1.0625rem;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s ease}
+.viewer-zoom button:hover:not(:disabled){background:rgba(255,255,255,.2)}
+/* 到頂/到底時變淡但**不隱藏**:按鈕位置跳動比按不動更難用 */
+.viewer-zoom button:disabled{opacity:.35;cursor:default}
+/* 倍率讀數兼「還原 100%」的按鈕:等寬數字,免得 100%→140% 時整排左右抖動 */
+.viewer-zoom-val{width:auto!important;min-width:3.4em;padding:0 6px;
+  font-family:var(--sans);font-size:0.75rem!important;font-variant-numeric:tabular-nums}
+.viewer-caption{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+  text-align:center;max-width:min(720px,100%);color:rgba(255,255,255,.72)}
+.viewer-title{font-size:0.9375rem;font-weight:600;color:#fff;overflow-wrap:break-word}
+.viewer-desc{font-size:0.8125rem;overflow-wrap:break-word}
+.viewer-count{font-size:0.75rem;color:rgba(255,255,255,.5);letter-spacing:.04em}
+.viewer-nav,.viewer-close{flex:none;border:none;cursor:pointer;color:#fff;
+  background:rgba(255,255,255,.12);border-radius:50%;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:background .15s ease}
+.viewer-nav:hover,.viewer-close:hover{background:rgba(255,255,255,.26)}
+.viewer-nav{width:44px;height:44px;font-size:1.75rem}
+.viewer-close{position:absolute;top:16px;right:16px;width:36px;height:36px;font-size:1.0625rem}
+
+@media (max-width:640px),((max-height:500px) and (orientation:landscape)){
+  /* 手機(含橫放,見檔頭「手機條件」):左右鈕改成疊在圖片兩側(padding 縮到 12px 後排不下三欄),
+     縮小一點並降低不透明度,免得擋住圖片內容。滑動切換才是主要操作。 */
+  .viewer-overlay{padding:52px 12px 24px}
+  .viewer-nav{position:absolute;top:50%;transform:translateY(-50%);
+    width:36px;height:36px;font-size:1.375rem;background:rgba(255,255,255,.16)}
+  .viewer-nav.prev{left:8px}
+  .viewer-nav.next{right:8px}
+  /* 縮放列縮一點跟著關閉鈕的位置走。手機主要用雙指捏合,但按鈕仍然要留著
+     ——手勢不會自己告訴使用者它存在。 */
+  .viewer-zoom{top:12px;left:12px}
+  .viewer-zoom button{width:30px;height:30px}
+}
+
+/* ── 未分組標籤彈窗(側欄「未分組」的入口打開的) ──
+   標籤全部攤成可點的 chip,一列多個,一眼掃完就好,不用在側欄裡慢慢滑。 */
+.ungrouped-box{max-width:720px}
+.ungrouped-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;
+  padding-right:44px}   /* 讓開右上角絕對定位的 ✕ */
+.ungrouped-head h2{margin-bottom:0;padding-right:0}
+.ungrouped-head .spacer{flex:1}
+.tagcloud{display:flex;flex-wrap:wrap;gap:8px}
+.tagcloud .tag{cursor:pointer}
+.tagcloud .tag:hover:not(.selected){background:var(--surface-2)}
+.tagcloud .empty{padding:24px 0;width:100%}
+
+/* 行寬切換改由外框負責(見上面 @media (min-width:641px) 裡的 #detailModal .modal-box),
+   內容區自己不再設 max-width——兩處都設的話,寬版會被內欄的上限擋住而看不出變寬。 */
+
+/* ── 畫重點的上色本體:背景上色(螢光筆),不是文字色 ──
+   文字色維持不變,才不會為了標重點反而犧牲可讀性(舊版是改文字色,選色被
+   「這個顏色當內文夠不夠深」綁死,才只能用 Material 300 那種淡色)。
+   深淺主題只差在 alpha:淺底要更飽和才看得出是螢光筆(.38),深底 .28 就夠且不刺眼。
+   ⚠ 選擇器必須逐個列出,不能圖方便寫成 [class^="hl-"]——工具列本身的
+   .hl-toolbar/.hl-swatch/.hl-sep/.hl-act 也全是 hl- 開頭,會被一起塗成螢光色。 */
+.hl-yellow,.hl-green,.hl-pink{border-radius:3px;padding:.05em .15em}
+.hl-yellow{background-color:rgba(234,179,8,.38)}
+.hl-green{background-color:rgba(16,185,129,.38)}
+.hl-pink{background-color:rgba(244,63,94,.38)}
+:root[data-theme="dark"] .hl-yellow{background-color:rgba(234,179,8,.28)}
+:root[data-theme="dark"] .hl-green{background-color:rgba(16,185,129,.28)}
+:root[data-theme="dark"] .hl-pink{background-color:rgba(244,63,94,.28)}
+
+/* ── 畫重點工具列(釘在彈窗右側中間外緣,不隨內容捲動,位置由 JS 依 modal-box 動態校正) ── */
+.hl-toolbar{display:none;position:fixed;top:50%;right:auto;z-index:60;
+  flex-direction:column;align-items:center;gap:10px;transform:translateY(-50%);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:14px 9px;box-shadow:0 10px 30px rgba(0,0,0,.16)}
+.hl-toolbar.show{display:flex}
+.hl-toolbar-label{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.06em;white-space:nowrap;writing-mode:vertical-rl;margin-bottom:2px}
+.hl-swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;
+  background:var(--sw);padding:0;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.hl-swatch.armed{border-color:var(--text)}
+.hl-swatch.clear{background:none;border:1px solid var(--border);color:var(--faint);
+  font-size:0.625rem;display:flex;align-items:center;justify-content:center}
+.hl-swatch.clear.armed{border-color:var(--text);color:var(--text)}
+/* 色票與下方動作鈕(書籤標記/行寬切換)之間的分隔線。直立工具列是橫線,
+   手機的橫排工具列在下面的 media query 裡轉成直線。 */
+.hl-sep{width:14px;height:1px;background:var(--border);flex:none}
+/* 工具列裡的動作鈕(非上色):比照統計列 .vmbtn 的鏤空 icon 鈕,啟用時 amber */
+.hl-act{background:none;border:1px solid transparent;border-radius:6px;color:var(--faint);
+  font-size:0.8125rem;line-height:1;padding:3px 5px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center}
+.hl-act.on{color:var(--amber);border-color:var(--border)}
+/* hover 一律包在 (hover:hover) 裡:觸控裝置點過之後 :hover 會黏在最後點到的
+   按鈕上,看起來像它一直是啟用狀態——而 .hl-act 的啟用狀態(.on)本來就有意義
+   (書籤已標記/窄行寬),黏住的 hover 會跟它混在一起讀不出來。 */
+@media (hover:hover){
+  .hl-swatch:hover{transform:scale(1.12)}
+  .hl-swatch.clear:hover{color:var(--text);border-color:var(--muted)}
+  .hl-act:hover{color:var(--muted)}
+}
+/* ── SRS 複習彈窗(views/srs.js)──
+   側欄入口沿用 .pill-toggle 的鏤空膠囊外觀,但**不掛 .on**:它是動作鈕不是
+   開關,借 .on 的 amber 會讓人以為「複習模式已啟用」。
+   零負債的設計決定了這裡沒有任何數字徽章——池子多大只在彈窗頂端講一次。 */
+/* 靠左(margin-right:auto):側欄裡它上面的日期軌道與下面的標題都是靠左起排的,
+   靠右會讓它變成整條側欄唯一一個不對齊左緣的東西。 */
+/* ⚠ margin 一定要歸零:以前這顆是 block、靠 `margin-right:auto` 貼左緣,現在它
+   在 .srs-row 這個 flex 容器裡——auto 的右邊距會把旁邊的 ? 一路推到側欄最右邊。
+   靠左改由容器負責(flex 預設就是 flex-start)。 */
+.srs-open{display:block;margin:0}
+/* 「複習」與旁邊的 ? 同一列,整列靠左:側欄裡它上面的日期軌道與下面的標題
+   都是靠左起排的。 */
+.srs-row{display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-start}
+/* ? 說明鈕:圓形、常駐淡色。刻意不用 .pill-toggle——那是開關的視覺語彙,
+   而這顆按下去只是開一個說明彈窗,沒有開/關狀態。 */
+.srs-help{width:1.5em;height:1.5em;flex:none;border-radius:50%;
+  border:1px solid var(--border);background:none;color:var(--faint);
+  font-family:var(--sans);font-size:0.75rem;line-height:1;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center}
+.srs-help:hover{color:var(--text);border-color:var(--muted)}
+/* 說明彈窗:窄一點(內容是四段短文,不需要整個螢幕) */
+.srshelp-box{max-width:520px}
+.srshelp-item{margin-top:14px}
+.srshelp-item b{font-size:0.875rem;color:var(--text)}
+.srshelp-item .hint{display:block;align-self:auto;margin-top:4px;line-height:1.6}
+/* 有一輪「暫離中」(使用者跳去編輯那筆名詞)時的樣子:文字換成「繼續複習 3/20」,
+   外觀轉成 amber 讓它在側欄裡叫得住人。⚠ 用 .resuming 不用 .on——這顆是動作鈕
+   不是開關,借 .on 的語意會變成「複習模式已啟用」。 */
+.srs-open.resuming{color:var(--amber);border-color:var(--amber)}
+
+.srs-box{max-width:720px}
+.srs-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-right:36px;margin-bottom:18px;
+  font-family:var(--sans);font-size:0.71875rem;color:var(--faint)}
+.srs-scope{overflow-wrap:break-word;min-width:0}
+.srs-progress{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 舞台高度給一個下限,翻面前後內容量差很多,不固定的話整顆彈窗會上下跳動 */
+.srs-stage{min-height:16em;display:flex;flex-direction:column;justify-content:center}
+.srs-empty{text-align:center;color:var(--faint);font-size:0.875rem;padding:3em 0}
+
+/* 正面:名詞是主角,字級明顯大過其他一切。刻意留白多——「遮住說明只看名詞」
+   的整個重點就是讓眼睛沒有別的東西可以抓。 */
+/* 正面整張卡是一顆 <button>(見 views/srs.js:frontHTML),所以要把瀏覽器的
+   按鈕預設外觀清掉,只留下「可聚焦、可按」的行為。 */
+.srs-front{display:block;width:100%;background:none;border:none;color:inherit;
+  font:inherit;text-align:center;padding:2.5em 0;cursor:pointer;border-radius:12px}
+.srs-front:hover .srs-hint{color:var(--muted)}
+/* 鍵盤聚焦時要看得出來(滑鼠點擊不顯示——:focus-visible 幫我們分辨) */
+.srs-front:focus{outline:none}
+.srs-front:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* ⚠ color 一定要明寫 var(--text):body 沒有主題化的 color,全站每個文字元素都
+   自己指定顏色。漏掉的話深色主題下會繼承到近黑色,大字直接消失在深色卡片上。 */
+.srs-term{font-size:1.75rem;font-weight:700;color:var(--text);
+  overflow-wrap:break-word;line-height:1.3}
+.srs-tpl{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);
+  letter-spacing:.08em;margin-top:8px}
+.srs-hint{font-family:var(--sans);font-size:0.71875rem;color:var(--faint);margin-top:2.5em}
+
+/* 漸進式提示(views/srs.js:hintHTML)。⚠ 提示區是正面那顆 <button> 的**兄弟節點**,
+   不能包進去——巢狀按鈕不是合法 HTML,瀏覽器會自行把內層拆出去,拆完的位置與
+   事件都不受我們控制。整區(按鈕與攤開的內容)一律置中:正面那張卡本身就是置中的
+   單欄版面,提示是它的延伸——靠左的話會在名詞正下方冒出一塊偏一邊的東西,讀起來
+   像是另一個區塊而不是同一張卡的補充。 */
+.srs-hints{margin-top:6px;padding-top:14px;border-top:1px dashed var(--border);
+  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.srs-hints > *:not(.srs-hint-btn){align-self:stretch}
+/* 這幾塊在背面卡裡靠自己的 margin-top 拉開,在提示區裡間距由 gap 負責——
+   兩份疊起來會多出一整塊空白 */
+.srs-hints .srs-tags,.srs-hints .srs-fields,.srs-hints .srs-gallery{margin-top:0}
+/* 內層那幾個 flex 容器有自己的主軸對齊,只靠外層的 text-align 置不了中 */
+.srs-hints .srs-tags,.srs-hints .srs-gallery{display:flex;flex-wrap:wrap;justify-content:center}
+.srs-hints .field-sm{justify-content:center}
+.srs-hint-btn{font-size:0.8125rem;padding:0.4em 1.2em}
+
+/* 背面就是一般的 div(不可點),名詞改成靠左的一般標題 */
+.srs-back .srs-term{font-size:1.375rem;text-align:left}
+.srs-fields{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.srs-fields .field-sm{display:flex;gap:8px;align-items:baseline;min-width:0}
+.srs-fields .k{font-family:var(--sans);font-size:0.65625rem;color:var(--faint);
+  letter-spacing:.06em;white-space:nowrap}
+.srs-fields .v{color:var(--muted);font-size:0.8125rem;min-width:0;overflow-wrap:break-word}
+.srs-desc{margin-top:14px;font-size:0.90625rem;line-height:1.65;color:var(--text);
+  overflow-wrap:break-word}
+.srs-desc img{max-width:100%;border-radius:8px;margin:6px 0;display:block}
+.srs-gallery{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.srs-gallery img{width:140px;height:105px;object-fit:cover;border-radius:8px;
+  border:1px solid var(--border);display:block}
+.srs-tags{margin-top:14px}
+.srs-box-hint{font-family:var(--sans);font-size:0.6875rem;color:var(--faint);margin-top:14px}
+
+/* 自評鈕:兩顆等寬大按鈕(手機好按)。背面上下各一組(見 srs.js:gradeHTML)——
+   說明欄可以很長,只放最底下等於「必須讀完整篇才能評分」。 */
+.srs-grade{display:flex;gap:12px;margin-top:24px;padding-top:18px;
+  border-top:1px solid var(--border)}
+/* 最上面那組不需要分隔線,它上面沒有東西可以隔 */
+.srs-grade-top{margin-top:0;padding-top:0;border-top:none;margin-bottom:18px}
+
+/* 背面的動作列:書籤 + 編輯,擺在自評鈕**下方**並用虛線隔開——評分鈕才是這一輪的
+   視覺焦點,不隔開的話這兩顆會被讀成同一組的第三、四個選項。虛線是刻意的:
+   .srs-grade 上緣已經有一條實線,兩條一樣的線會看起來像三段式分隔。 */
+.srs-acts{display:flex;justify-content:center;align-items:center;gap:8px;
+  margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
+.srs-act{display:inline-flex;align-items:center;gap:0.35em;font-size:0.8125rem;padding:0.35em 0.9em}
+/* 書籤鈕比照詳細頁工具列的 .hl-act:鏤空 icon,啟用時 amber */
+.srs-mark{background:none;border:1px solid var(--border);border-radius:6px;
+  color:var(--faint);line-height:1;padding:0.35em 0.7em;cursor:pointer}
+.srs-mark:hover{color:var(--muted)}
+.srs-mark.on{color:var(--amber);border-color:var(--amber)}
+.srs-grade .btn{flex:1;padding:0.75em 0;font-size:0.9375rem}
+/* 自評鈕的專屬配色:預設的 .btn(無底無框)看不出「忘了」可以按、.btn.primary
+   的整片實心強調色底在淺色主題太突兀。「忘了」補灰框、「記得」改淡色底+強調色字
+   ——主從層次還在(記得仍是視覺焦點),但不再是一整片實心。兩顆都走主題變數,
+   深淺色自動適配;hover 要蓋掉 .btn.primary:hover 的 on-accent 字 + opacity。 */
+.srs-grade .btn.srs-grade-no{border:1px solid var(--border);border-radius:8px;color:var(--muted)}
+.srs-grade .btn.srs-grade-no:hover{background:var(--surface-2);color:var(--text)}
+.srs-grade .btn.primary.srs-grade-yes{background:var(--amber-soft);color:var(--amber);
+  border:1px solid var(--amber);border-radius:8px}
+.srs-grade .btn.primary.srs-grade-yes:hover{color:var(--amber);opacity:.85}
+
+.srs-done{text-align:center;padding:2.5em 0}
+.srs-done-title{font-size:1.25rem;font-weight:700;color:var(--text)}
+.srs-done-sub{font-family:var(--sans);font-size:0.8125rem;color:var(--faint);margin-top:8px}
+.srs-done-acts{display:flex;gap:12px;justify-content:center;margin-top:2em}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ── 手機版優化 ──
+   卡片工具列平常靠 hover/focus-within 浮現,觸控裝置沒有 hover 狀態,
+   點不到「編輯/刪除」——窄螢幕下改成一律顯示、排在卡片內容下方(非覆蓋)。
+   彈窗(詳細內容/設定)在窄螢幕下改成滿版,避免左右留白把內容擠成一長條。
+   條件含「橫放矮螢幕」(見檔頭「手機條件」註解;JS 同一把尺在 utils.js:NARROW_MQ):
+   手機橫拿時寬度過了 640 但高度只剩 ~360,浮動小紙片彈窗、直立畫重點工具列都
+   擺不下,整套手機版佈局照樣要生效。 */
+@media (max-width:640px),((max-height:500px) and (orientation:landscape)){
+  .wrap{padding:20px 14px 70px}
+  header{gap:6px}
+  /* 窄螢幕下把按鈕的文字說明收起來只留圖示,避免文字擠爆整排造成換行 */
+  .btn-label{display:none}
+  /* 觸控裝置:按鍵提示無意義,收掉;按鈕觸控面積加大 */
+  .scanbox kbd{display:none}
+  header .btn{padding:10px 12px}
+  #btnNew{padding:10px 14px}
+
+  /* 詳細頁「讀程式碼」的釘住:第一個程式碼區塊(detail.js:openDetail 掛 .cb-pin)
+     捲到頂就 sticky 黏在彈窗上緣,說明文字從下面繼續捲——不改 DOM 順序,捲動容器
+     仍是 .modal-box。程式碼太長時由 .cb-body 限高、內部自己捲(垂直捲動必須放在
+     行號欄與 pre.cb 的**共同父層**,兩欄才會同步捲;橫向捲動照舊在 pre.cb)。
+     只釘第一個:多個都 sticky 會互相疊;區塊是最後一段時沒有黏滯空間,自然失效。
+     .cb-pin 這個 class 不會漏進 .md——htmlToMd 只認 cb-wrap、轉圍籬時 class 不參與。
+     ⚠ 只在手機生效:桌機彈窗夠高,程式碼整塊攤開由 .modal-box 捲才是原本的閱讀
+     方式(限高的內捲視窗在大螢幕反而礙事)。detail.js:openDetail 仍無條件掛
+     .cb-pin——CSS-only 的 gate 才能在手機轉向時即時重算,桌機沒有對應規則即無效。 */
+  /* 滿版出血:負 margin 抵銷 .modal-box 手機版 16px 左右內距(見下方 .modal-box),
+     左右邊框與圓角一併拿掉——貼齊螢幕邊緣的框線只是視覺噪音。
+     .modal-box 的 overflow-x:hidden 裁在 padding box 邊緣,-16px 剛好貼齊不會被裁。
+     上下邊框保留,區塊與前後文字仍要有界線;只寫 left/right longhand,
+     上下 margin 沿用 .cb-wrap 原本的 10px。 */
+  .detail-desc .cb-wrap{margin-left:-16px;margin-right:-16px;
+    border-left:none;border-right:none;border-radius:0}
+  .detail-desc .cb-wrap.cb-pin{position:sticky;top:0;z-index:2}
+  /* 35vh + 標題列約 4vh ≈ 畫面 40%,留 60% 給下方說明(原 45vh 約各半)。
+     align-items:flex-start + pre.cb 的 overflow-y:hidden 是修行號不同步的關鍵:
+     pre.cb 只寫 overflow-x:auto 時另一軸會被規格算成 auto,自己變成第二層垂直
+     scroller;stretch 又把行號欄釘在容器高、讓行號內容溢進 .cb-body——結果是
+     「拖程式碼捲內層、拖行號捲外層」兩層各捲各的,還拉得出不存在的行號與空白。
+     收斂成 flex-start 後兩欄回到自然高度(行數/行高/padding 一致,必然等高),
+     垂直捲動只剩 .cb-body 一層,兩欄同步;橫向照舊留在 pre.cb,行號欄不被橫捲帶走。
+     overscroll-behavior:contain 讓捲到頭的慣性不鏈到 .modal-box(iOS rubber-band)。 */
+  .detail-desc .cb-wrap.cb-pin .cb-body{max-height:35vh;overflow-y:auto;
+    align-items:flex-start;overscroll-behavior:contain}
+  .detail-desc .cb-wrap.cb-pin .cb-body pre.cb{overflow-y:hidden}
+
+  .card{padding:11px 0 13px;flex-wrap:wrap}
+  /* min-width:0(桌機版讓文字能無限縮窄跟圖庫同一行)在窄螢幕會導致文字被
+     擠成一條(圖庫用 flex-shrink 讓出空間、始終跟文字同一行、永不換行)。
+     這裡蓋掉,逼文字欄達到這個寬度就必須換行,圖庫才會真的掉到下一行。 */
+  .card-main{min-width:160px}
+  /* 詳細模式的圖片橫向滿版出血:負 margin 抵銷 .wrap 的 14px 左右內距,讓圖片真的
+     貼到螢幕兩側邊緣(文字內容仍留在 14px 內距裡)。.card 手機版左右 padding 已是 0
+     (見上面),所以只需抵銷 .wrap 那一層。width 要一起加回 28px,否則 100% 只填到
+     原本的內容寬、右側會空一塊(這正是舊版 max-width:280px 造成的症狀)。
+     margin-top 要蓋掉桌機版讓縮圖下移一行的 1.6em——這裡圖本來就 order:1 自己一行,
+     不需要那個位移(上面用的是 margin-left/right longhand,不會自動重設)。值是 16px
+     而不是 0:.card 的 row-gap 為了關鍵字列改成 0 之後,這一行與上方文字之間原本靠
+     row-gap 撐出的 16px 要在這裡加回來。 */
+  .card-gallery{width:calc(100% + 28px);max-width:none;height:200px;order:1;
+    margin-top:16px;margin-left:-14px;margin-right:-14px;border-radius:0}
+  /* 方格模式的封面只加高,不做橫向出血——這裡必須寫到 (0,3,0) 的特異性才蓋得過
+     上面那條 .card-gallery,但刻意只覆寫 height,讓 width 沿用
+     .view-grid .card .card-gallery 的 auto、出血沿用它的 margin:-14px -14px 10px
+     (只到卡片邊框內緣,保住 tile 的邊框與圓角)。
+     ★ 不要在這裡改成滿版寬:方格在內容寬 ≥454px(視窗 ≥482px)就是 2 欄,
+     超過格寬的封面會讓兩欄的圖互相重疊並衝出列表邊界。 */
+  .view-grid .card .card-gallery{height:200px}
+  /* 封面加高後工具列跟著下移(= 封面 200px + 其下 10px margin)。這條一定要寫,
+     上面 mobile 的 .card-toolbar{top:4px} 特異性 (0,1,0) 打不過 .view-grid .card-toolbar;
+     而寫成 (0,3,0) 是為了讓無封面卡片的 :not(:has()) 規則 (0,4,0) 仍能蓋過它。 */
+  .view-grid .card .card-toolbar{top:210px;right:0}
+  /* 觸控裝置沒有 hover,圖庫左右切換鈕改成常駐 */
+  .gallery-nav{opacity:1}
+
+  /* 說明欄在窄螢幕不縮排、也不畫左緣線:手機只有 ~347px 的內容寬,15px 是其中
+     4%,而卡片左右 padding 這裡本來就已經歸零(見上面的 .card)——同一個「把寬度
+     讓給文字」的取捨,說明欄沒有理由自己留著。桌機那條線是為了框出多行區塊的範圍,
+     手機一行放不了幾個字、說明本來就佔滿整個卡片寬,沒有範圍需要框。
+     ⚠ .code-peek 要一起歸零:它的 15px 是刻意跟說明欄文字對齊的,只改一邊會讓
+     程式碼縮圖比它上方的說明文字凸出 15px。 */
+  .field.desc{margin-left:0;padding-left:0;border-left:none}
+  .code-peek{margin-left:0}
+
+  /* 欄位標籤改成 run-in(與值同一條文字流),不再是並排的 flex 欄。
+     桌機版 .field-sm 是 flex,標籤(.k,white-space:nowrap)先吃掉自己的寬度,
+     值只拿得到右邊剩下那條窄欄——而值的**每一行**都被限制在那條窄欄裡,長值於是
+     整段往右縮排、行寬比卡片窄一大截。手機的 --font-scale:1.8 讓標籤更寬、剩餘欄
+     更窄,所以症狀只在手機看得出來。
+     改成 inline 之後兩件事同時成立:短值仍跟在標籤後面同一行(標籤不會白白獨佔
+     一整行),長值換行後的每一行都是整個卡片的寬度。
+     ⚠ .k 的 white-space:nowrap 與 .v 的 overflow-wrap:break-word 都要留著——
+     那是 .field-pair .field-sm 原註解在守的事(長字串仍然斷得掉,不撐出水平捲軸)。
+     flex 的 gap:8px 在 block 下失效,改用 .k 的 margin-right;用 em 不用 px,
+     按 A+/A− 調字級時間距才會跟著走(同 .card-gallery 的 margin-top:1.6em)。
+     代價:兩個都很短的欄位不再共用一行。換來的是每個欄位都拿得到滿版寬度。 */
+  .field-pair{display:block}
+  .field-pair .field-sm{display:block;max-width:none}
+  .field-pair .field-sm + .field-sm{margin-top:3px}
+  .field-pair .k{margin-right:.7em}
+  .field-pair .v{display:inline}
+  /* SRS 複習彈窗的欄位是另一組同形狀的規則(.srs-fields .field-sm),同一個症狀,
+     同一個解法。.srs-hints .field-sm 的 justify-content:center 在 block 下失效,
+     置中改由 text-align 接手。 */
+  .srs-fields .field-sm{display:block}
+  .srs-fields .v{display:inline}
+  .srs-hints .field-sm{text-align:center}
+
+  /* 編輯/刪除:曾經是「排在卡片內容下方的一整列按鈕」,每張卡片都多吃掉一行高度,
+     一頁看得到的名詞少一大截。改成貼在卡片右上角的常駐 icon 小工具列(絕對定位,
+     不佔版面流),只在標題那一列 padding-right 讓出空間,說明/欄位仍是滿寬。
+     底下墊 surface 底色的小膠囊,方便觸控辨識;方格模式的工具列另外定位在縮圖
+     下方(見上面 .view-grid .card-toolbar),同樣不覆蓋圖片。 */
+  /* 讓出工具列膠囊的寬度,否則標題右側的附件徽章/樣板名會被壓在下面。膠囊寬度是
+     兩部分相加:兩顆 icon 的字寬(跟著 --font-scale 縮放,用 em)+ 按鈕左右內距與
+     外框(固定 px)。寫死成單一 px 值的話,按 A+/A− 調字級就會重疊或留下大片空白。 */
+  .card .top{padding-right:calc(2em + 46px)}
+  .card-toolbar{top:4px;right:0;flex-direction:row;align-items:center;gap:0;
+    opacity:1;transform:none;pointer-events:auto;transition:none;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1px}
+  .ctbtn{padding:8px 10px;border-radius:7px;font-size:0.9375rem}
+
+  .editor{padding:44px 16px 20px;max-width:100%;border-radius:0}
+
+  /* 字體放大一級:窄螢幕手感讀取吃力,把主要內容文字(卡片、詳情、編輯器、
+     選單)都調大一階,裝飾性小字(欄位 label、meta 時間戳、icon-only 按鈕)不動 */
+  html,body{font-size:0.9375rem}
+  .scanbox input{font-size:1.1875rem}
+  .tag{font-size:0.8125rem}
+  .card h2{font-size:1rem}
+  .card h2 .alias-inline{font-size:0.875rem}
+  .card .tags .tag{font-size:0.78125rem}
+  .field .v,.field-pair .v,.v code{font-size:0.875rem}
+  .empty{font-size:0.9375rem}
+  .editor input[type=text],.editor textarea{font-size:1rem}
+  .selectbox .ph{font-size:0.9375rem}
+  .selectdrop input,.selectopt{font-size:0.875rem}
+  .selectopts.grid{grid-template-columns:repeat(3,1fr)}  /* 手機窄,5 欄會擠到讀不了 */
+  .dir-sidebar .dir-item{font-size:0.875rem}
+  .settings-tab{font-size:0.875rem}
+  .settings-row{font-size:0.90625rem}
+  .tagmgr-name{font-size:0.90625rem}
+  .mdcontent{font-size:0.9375rem}
+  .mdcontent code{font-size:0.875rem}
+
+  /* 說明欄工具列:13 個控制項在 ~347px 的內容寬(且字級被 --font-scale 放大)
+     只會擠成一團,預設收成一顆小三角,要用才展開。展開時必須換行排——
+     .mdtoolbar 桌機沒有 flex-wrap,不加這條會變成橫向溢出。 */
+  .mdtoolbar{flex-wrap:wrap}
+  .mdtoolbar-toggle{display:inline-block}
+  .mdtoolbar.collapsed>*:not(.mdtoolbar-toggle){display:none}
+  /* 收合時連一整行都不佔:浮到說明欄右上角,說明文字的行框自動避開它。
+     ⚠ 這裡刻意用 float 而不是 position:absolute——絕對定位要靠
+     .mdcontent{padding-right:32px} 才不會讓文字跑到按鈕底下,而那 32px 是**每一行**
+     都讓出去(手機內容寬只有 ~347px,等於砍掉 9%);float 只讓出它旁邊那幾行,
+     底下的行照樣滿寬。.mdeditor 已經有 overflow:hidden(圓角切邊用)天然是 BFC,
+     浮動關得住,不用額外 clearfix。 */
+  .mdtoolbar.collapsed{float:right;padding:4px 6px;border-bottom:none;background:none}
+  /* 配套:<textarea> 預設是 inline-block,寬度 100% 的 inline-block 塞不進被浮動
+     縮短的行框,會被整個推到浮動下方、頂端多出一塊空白。改成 block 就照舊貼齊頂端。 */
+  .mdsource{display:block}
+  .attach-item{font-size:0.875rem}
+  .attach-desc,.attach-desc-view{font-size:0.84375rem}
+  .detail-desc{font-size:0.96875rem}
+  .hist-item{font-size:0.875rem}
+  .modal-box h2{font-size:1.5rem}
+
+  .modal-overlay{padding:0;align-items:stretch}
+  /* #editorModal 不包 .modal-box(見 :378 附近註解),.editor 直接是 flex item,
+     吃到上面的 align-items:stretch 會被釘死在剛好一屏高——說明欄超過一屏時內容
+     溢出到 .editor 盒外,溢出區沒有底色(下方簍空)。改回 flex-start 讓高度跟
+     內容走,min-height 保住內容不足一屏時的滿版紙張感;捲動仍由 #editorModal
+     既有的 overflow-y:auto 負責。 */
+  #editorModal{align-items:flex-start}
+  #editorModal .editor{min-height:100%}
+  .modal-box{max-width:100%;width:100%;max-height:100%;height:100%;
+    border-radius:0;padding:22px 16px 32px}
+  /* 手機版彈窗必須滿版,而上面 min-width:641px 區塊裡的 #detailModal .modal-box
+     是 id+class 權重,單靠 class 的那條壓不過它——現在多這條同權重、位置更後面
+     的規則把它釘死,萬一哪天那些 720/920px 規則被搬出 media query 也不會漏進來。 */
+  /* padding-bottom 讓出工具列的高度:它是 fixed 在 bottom:18px,而 .modal-box 是
+     height:100%,原本那 32px 底距遠不夠,說明欄最後幾行會永遠壓在工具列底下。 */
+  #detailModal .modal-box{max-width:100%;width:100%;margin-top:0;left:auto;
+    padding-bottom:96px}
+  .modal-close{right:12px;top:12px}
+  .settings-box{max-width:100%;padding:22px 16px 32px}
+  /* 窄螢幕退化:左側選單改回頂部橫排。群組標題在橫排裡只會把捲動列切斷,
+     整批隱藏——分頁的排列順序仍然帶著分組語意,標題只是不顯示。 */
+  .settings-layout{flex-direction:column;gap:0;min-height:0}
+  .settings-tabs{flex-direction:row;width:auto;overflow-x:auto;padding-right:0;
+    border-right:none;border-bottom:1px solid var(--border);padding-bottom:6px}
+  .settings-navgroup{display:none}
+  .settings-tab{white-space:nowrap;border-left:none;padding:11px 16px}
+  .settings-tab.on{background:var(--surface-2)}
+  .settings-main{margin-top:16px}
+
+  /* top:auto 是關鍵:base rule 有 top:50%,JS 用 style.top="" 清掉行內覆寫時
+     會 fallback 回這個 50%,若同時又設了 inline bottom,fixed 元素會被上下
+     撐開(top 與 bottom 同時存在等於強制拉伸高度),整顆變成一條巨大的直立膠囊 */
+  .hl-toolbar{flex-direction:row;padding:10px 14px;top:auto;right:auto;
+    /* 保險而不是修現況:色票拿掉之後只剩三顆 .hl-act(約 190px),現在塞得下。
+       但 .hl-act 的字級吃 --font-scale(手機 1.8),將來多一顆按鈕或字級再放大
+       就會再撞一次牆——而工具列是 fixed + translateX(-50%),溢出是**左右對稱**的,
+       加上 body{overflow-x:hidden},使用者連捲過去看都做不到。 */
+    max-width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center}
+  /* 手機版沒有畫重點:互動綁死在 mouseup,而行動瀏覽器的長按選字被原生 selection
+     UI 接管、不合成該事件(拖曳選取把手調整範圍更不會),所以那四顆色票在手機上
+     從來沒有真的能用過。既有重點照常顯示顏色(.hl-yellow/.hl-green/.hl-pink 不受
+     影響),只是不能新增或清除。行為層那一半在 detail.js:onMouseUpHighlight 的
+     isNarrow() 早退——⚠ 別只留這條 CSS,藏起來的按鈕節點還在 DOM 裡。 */
+  /* ⚠ .hl-swatch.clear 必須另外列出來:它在上面有一條 .hl-swatch.clear{display:flex},
+     兩個 class 的權重壓過單一 class 的 .hl-swatch,只寫 .hl-swatch 的話那顆 ✕
+     會**單獨留在工具列上**(而且它按了什麼都不會發生)。 */
+  /* 行寬鈕也藏:手機彈窗滿版(上面的 max-width:100%),.wide 完全無效,
+     按了只有 .on 樣式在閃。行為層那一半在 detail.js 的 onclick 早退。 */
+  .hl-toolbar-label,.hl-swatch,.hl-swatch.clear,.hl-sep,#hlWidthBtn{display:none}
+  /* 剩下的兩顆(書籤/分享)放大到堪用的觸控目標:原本 padding:3px 5px
+     總高只有 ~33px。 */
+  .hl-act{min-width:40px;min-height:40px;padding:8px}
+}

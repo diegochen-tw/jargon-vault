@@ -1,0 +1,26 @@
+# 縮小 build context,且絕不把私有使用者資料 / 機密複製進 image。
+data/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.git/
+.github/
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+docs/
+training/
+mcp_server/
+*.log
+term-vault.zip
+*.zip
+
+# 機密與本機設定(容器改用 .env.docker,由 compose 的 env_file 注入)
+.env
+.env.docker
+run.sh
+run.ps1
+.vscode/
+.claude/

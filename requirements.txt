@@ -1,0 +1,14 @@
+# Direct runtime dependencies, pinned to the versions this project is tested with.
+# Lower bound = the tested version (so bug/security fixes still flow in).
+# Upper bound = the next release likely to break things.
+# FastAPI is still pre-1.0, so even its minor releases can break — we cap it tightly.
+fastapi>=0.139,<0.140
+uvicorn>=0.51,<1.0
+pyyaml>=6.0,<7.0
+python-multipart>=0.0.32,<1.0
+httpx>=0.28,<1.0
+bcrypt>=5.0,<6.0
+itsdangerous>=2.2,<3.0
+# AI 生成輸出的簡轉繁保險(s2twp,見 app/routers/ai.py 檔頭)。
+# 選純 Python 重實作版:無原生擴充,Windows / PyInstaller 打包都安全。
+opencc-python-reimplemented>=0.1.7,<1.0

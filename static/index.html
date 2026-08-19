@@ -1,0 +1,862 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jargon Vault 名詞術語庫</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/main.css?v=20260820a">
+</head>
+<body>
+<!-- 範例資料的置頂行:註冊時種了範例、使用者還沒清掉時顯示(見 views/demobanner.js)。
+     內容全部由 JS 生成——它要在按下之後整個消失,留在 HTML 裡的靜態文字
+     反而要多寫一段清除邏輯。 -->
+<div class="demo-banner" id="demoBanner" style="display:none"></div>
+<div class="auth-gate" id="authGate" style="display:none">
+  <div class="auth-box">
+    <h1>Jargon Vault</h1>
+    <p class="sub" data-i18n="app.subtitle">名詞術語庫</p>
+    <!-- 團隊邀請:走 /invite/<token> 進來時才顯示(見 app.js:boot)。
+         收到連結的人在決定要不要註冊之前,必須先看得到「誰邀我進哪個團隊」。 -->
+    <div class="auth-invite" id="authInvite" style="display:none"></div>
+    <form id="authForm">
+      <input type="email" id="authEmail" placeholder="email" required autocomplete="username">
+      <input type="password" id="authPassword" data-i18n-ph="auth.passwordPh" placeholder="密碼(至少 8 個字元)" required autocomplete="current-password" minlength="8">
+      <button type="submit" class="btn primary" id="authSubmit">登入</button>
+    </form>
+    <button type="button" class="btn" id="authToggleMode">還沒有帳號?註冊</button>
+    <div class="auth-divider" data-i18n="auth.or">或</div>
+    <a class="btn" id="authGoogle" data-i18n="auth.google" href="/api/auth/google/login">使用 Google 登入</a>
+    <div class="auth-error" id="authError" style="display:none"></div>
+  </div>
+</div>
+<div class="wrap" style="display:none">
+  <header>
+    <input type="file" id="importFile" accept=".json,.csv,.zip" style="display:none">
+    <input type="file" id="importTemplatesFile" accept=".json" style="display:none">
+    <button class="btn icon mobile-filter-toggle" id="btnFilter" data-i18n-title="header.filterTitle" title="篩選分類/標籤">☰<span class="btn-label" data-i18n="header.filterLabel"> 篩選</span></button>
+    <button class="btn primary" id="btnNew">＋<span class="btn-label" data-i18n="header.newLabel"> 新建</span></button>
+    <span class="spacer"></span>
+    <div class="menu-wrap">
+      <button class="btn icon" id="btnMenu" data-i18n-title="header.menuTitle" title="設定選單" aria-haspopup="true" aria-expanded="false">⚙️<span class="btn-label" data-i18n="header.settingsLabel"> 設定</span></button>
+      <div class="menu" id="headerMenu" role="menu">
+        <button class="menu-item" id="menuSettings" role="menuitem"><span class="menu-ic">⚙️</span><span data-i18n="menu.settings">功能設定</span></button>
+        <div class="menu-fontrow">
+          <span class="menu-ic">🅰</span><span class="menu-font-label" data-i18n="menu.fontSize">字體</span>
+          <span class="spacer"></span>
+          <div class="menu-fontctl">
+            <button class="btn icon" id="btnFontDown" data-i18n-title="font.smaller" title="縮小字體">A−</button>
+            <span class="menu-font-val" id="fontScaleVal">100%</span>
+            <button class="btn icon" id="btnFontUp" data-i18n-title="font.bigger" title="放大字體">A＋</button>
+          </div>
+        </div>
+        <button class="menu-item" id="btnTheme" role="menuitem"><span class="menu-ic" id="btnThemeIcon">🌙</span><span id="btnThemeLabel" data-i18n="menu.themeDark">深色主題</span></button>
+        <div class="menu-sep"></div>
+        <button class="menu-item" id="btnLogout" role="menuitem"><span class="menu-ic">🚪</span><span data-i18n="header.logout">登出</span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="dir-backdrop" id="dirBackdrop"></div>
+  <aside class="dir-sidebar" id="dirSidebar">
+    <button class="btn icon dir-sidebar-close" id="dirSidebarClose" data-i18n-title="sidebar.close" title="關閉">✕</button>
+    <div class="logo" id="btnLogo" data-i18n-title="header.logoTitle" title="清空所有篩選條件"><h1>Jargon Vault</h1><span class="sub" data-i18n="app.subtitle">名詞術語庫</span></div>
+    <!-- 日期標題右側的切換鈕:日期篩選要比「上次編輯時間」(預設)還是「建立時間」。
+         做成標題列上的一顆小鈕而不是下拉:它只有兩個值,而且切換之後底下那條軌道
+         圈出來的東西會整個換一批,放在軌道正上方才看得出因果。 -->
+    <div class="sidebar-h3row">
+      <h3 data-i18n="sidebar.date">日期</h3>
+      <button type="button" class="datefield-toggle" id="dateFieldToggle"></button>
+    </div>
+    <div id="dateBar"></div>
+    <div class="srs-row">
+      <button type="button" class="pill-toggle srs-open" id="srsOpen" data-i18n="srs.open" data-i18n-title="srs.openTitle" title="用目前的篩選範圍抽卡複習">複習</button>
+      <button type="button" class="srs-help" id="srsHelp" data-i18n-title="srs.helpTitle" title="這是什麼?">?</button>
+    </div>
+    <hr>
+    <h3 data-i18n="sidebar.templateFilter">標籤分類</h3>
+    <div class="dir-list" id="templateList"></div>
+    <hr>
+    <h3 data-i18n="sidebar.tagGroups">標籤群組</h3>
+    <button type="button" class="pill-toggle" id="multiSelectToggle" data-i18n="sidebar.multiSelect">複選標籤</button>
+    <div class="dir-list" id="groupTree"></div>
+  </aside>
+
+  <div class="scanner">
+    <div class="scanbox">
+      <input id="q" data-i18n-ph="search.placeholder" placeholder="搜尋關鍵字…" autocomplete="off" autofocus>
+      <button type="button" class="btn" id="btnClearQ" data-i18n="search.clear" style="display:none">清空</button>
+      <kbd>/</kbd>
+      <!-- 語意搜尋開關住在搜尋列裡(kbd 右側)而不是下面的統計列:它改變的是
+           「這次搜尋怎麼找」,跟輸入框是同一件事;統計列那排改變的是「結果怎麼呈現」。
+           ⚠ 放了 inline SVG 的按鈕不能掛 data-i18n——applyI18n() 對它是寫 textContent,
+           會把 SVG 整個清掉;只掛 data-i18n-title。 -->
+      <button type="button" class="pill-toggle icon-only" id="semanticToggle" data-i18n-title="stat.semanticTitle" title="用意思找,不只比對字面"><svg class="tg-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6c.5 3.2 3.2 5.9 6.4 6.4-3.2.5-5.9 3.2-6.4 6.4-.5-3.2-3.2-5.9-6.4-6.4C4.8 7.5 7.5 4.8 8 1.6z"/></svg></button>
+    </div>
+    <div class="stat" id="stat">
+      <span id="statText"></span>
+      <div class="stat-right">
+        <!-- 這兩顆都是 icon-only 開關,共用「鏤空=關、實心=開」的視覺語言(見 main.css 的
+             .bm-ic / .tg-ic)。SVG 按鈕不掛 data-i18n 的理由同上(語意搜尋那顆的註解)。 -->
+        <button type="button" class="pill-toggle icon-only" id="markedToggle" data-i18n-title="stat.markedOnly" title="只顯示有標記的名詞"><svg class="bm-ic" viewBox="0 0 14 18" aria-hidden="true"><path d="M2.4 1.4h9.2v15.2L7 12.4l-4.6 4.2z"/></svg></button>
+        <!-- 說明區塊本身:鏤空框 + 內文線。啟用(說明已隱藏)時內文線收掉、框填實 -->
+        <button type="button" class="pill-toggle icon-only" id="hideDescToggle" data-i18n-title="stat.hideDesc" title="隱藏說明"><svg class="tg-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.6" y="2.6" width="12.8" height="10.8" rx="2"/><g class="tg-lines"><path d="M4.4 6.4h5.2M4.4 9.4h7.2"/></g></svg></button>
+        <!-- 圖片區塊本身:鏤空框 + 內容物(山+太陽)。啟用(圖片已隱藏)時內容物收掉、
+             框填實——沿用「隱藏說明」那顆的 .tg-ic / .tg-lines,視覺語言自動一致。 -->
+        <button type="button" class="pill-toggle icon-only" id="hideImgToggle" data-i18n-title="stat.hideImages" title="隱藏圖片"><svg class="tg-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.6" y="2.6" width="12.8" height="10.8" rx="2"/><g class="tg-lines"><path d="M3.4 11.4 6.6 7.8l2.2 2.4 1.9-2 2.1 3.2"/><circle cx="10.6" cy="5.6" r="1.15"/></g></svg></button>
+        <!-- 瀏覽模式:**一顆**切換鈕,點一下在 詳細 ↔ 多欄 之間互換(預設詳細),
+             不是兩顆各自獨立的按鈕。⚠ 圖示顯示的是**目前生效的模式**,不是「按下去
+             會變成什麼」——理由同側欄的日期欄位切換鈕(見 sidebar.js:dateFieldLabel
+             的註解):寫成目標會讓人以為現在就是那個模式。
+             圖示與 title 都由 JS 寫入(見 list.js:renderViewMode),所以這裡刻意不掛
+             data-i18n/data-i18n-title,免得 applyI18n() 在 boot 時把它們蓋掉。 -->
+        <button type="button" class="vmbtn" id="viewModeToggle"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="list"></div>
+  <button type="button" class="btn load-more" id="loadMoreBtn" data-i18n="list.loadMore" style="display:none">載入更多內容</button>
+
+  <!-- 團隊庫:我參與的每個團隊各自一區(見 list.js:renderTeams)。
+       區塊本身由 JS 產生——團隊數量是動態的,而且每一區各自分頁。 -->
+
+</div>
+
+<div class="modal-overlay" id="editorModal"></div>
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-box">
+    <button class="btn icon modal-close" id="detailModalClose" data-i18n-title="detail.close" title="關閉(Esc)">✕</button>
+    <div id="detailModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ungroupedModal">
+  <div class="modal-box ungrouped-box">
+    <button class="btn icon modal-close" id="ungroupedModalClose" data-i18n-title="detail.close" title="關閉(Esc)">✕</button>
+    <div class="ungrouped-head">
+      <h2 data-i18n="sidebar.ungroupedTitle">未分組標籤</h2>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="ungroupedManage" data-i18n="settings.tabTags">標籤管理</button>
+    </div>
+    <div class="tagcloud" id="ungroupedTagList"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="srsModal">
+  <div class="modal-box srs-box">
+    <button class="btn icon modal-close" id="srsModalClose" data-i18n-title="detail.close" title="關閉(Esc)">✕</button>
+    <div class="srs-head">
+      <span class="srs-scope" id="srsScope"></span>
+      <button type="button" class="btn" id="srsScopeToggle"></button>
+      <span class="spacer"></span>
+      <span class="srs-progress" id="srsProgress"></span>
+    </div>
+    <div class="srs-stage" id="srsStage"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box settings-box">
+    <button class="btn icon modal-close" id="settingsModalClose" data-i18n-title="detail.close" title="關閉(Esc)">✕</button>
+    <h2 data-i18n="settings.title">設定</h2>
+    <div class="settings-layout">
+      <!-- 分頁依「這個設定作用在什麼上」分成四群。群組標題刻意用 div 而不是 button:
+           settings.js 的 querySelectorAll(".settings-tab") 只挑 button,標題自動被排除,
+           也不會擠進 Tab 焦點順序。窄螢幕時標題整批隱藏(見 main.css 的窄螢幕退化區塊),
+           但分頁的排列順序仍帶著分組語意。 -->
+      <nav class="settings-tabs" id="settingsTabs">
+        <div class="settings-navgroup" data-i18n="settings.navContent">內容</div>
+        <button type="button" class="settings-tab" data-tab="templates" data-i18n="settings.tabTemplates">欄位樣板</button>
+        <!-- 外掛模組放在「內容」群、緊鄰欄位樣板:新樣板的唯一取得入口是安裝外掛
+             (「+新增樣板」按鈕已移除),入口緊鄰樣板管理才找得到。 -->
+        <button type="button" class="settings-tab" data-tab="plugins" data-i18n="settings.tabPlugins">外掛模組</button>
+        <button type="button" class="settings-tab" data-tab="tags" data-i18n="settings.tabTags">標籤管理</button>
+        <button type="button" class="settings-tab" data-tab="trash" data-i18n="settings.tabTrash">回收桶</button>
+        <button type="button" class="settings-tab" data-tab="cleanup" data-i18n="settings.tabCleanup">整理與清理</button>
+        <div class="settings-navgroup" data-i18n="settings.navAi">AI 功能</div>
+        <button type="button" class="settings-tab" data-tab="ai" data-i18n="settings.tabAi">連線設定</button>
+        <button type="button" class="settings-tab" data-tab="semantic" data-i18n="settings.tabSemantic">語意檢索</button>
+        <div class="settings-navgroup" data-i18n="settings.navSharing">分享與備份</div>
+        <button type="button" class="settings-tab" data-tab="publish" data-i18n="publish.title">公開筆記</button>
+        <button type="button" class="settings-tab" data-tab="transfer" data-i18n="settings.tabTransfer">匯出/入</button>
+        <button type="button" class="settings-tab" data-tab="backup" id="settingsTabBackup" data-i18n="settings.tabBackup" style="display:none">備份與還原</button>
+        <div class="settings-navgroup" data-i18n="settings.navSystem">系統</div>
+        <button type="button" class="settings-tab" data-tab="account" data-i18n="settings.tabAccount">帳號</button>
+        <button type="button" class="settings-tab" data-tab="preference" data-i18n="settings.tabPreference">偏好設定</button>
+        <button type="button" class="settings-tab" data-tab="admin" id="settingsTabAdmin" data-i18n="settings.tabAdmin" style="display:none">管理</button>
+        <!-- 關於本專案刻意放最後:「管理」與「備份與還原」是整份 nav 僅有的兩個會被
+             display:none 的項目(app.js 依 is_admin 切)。「管理」擺在關於本專案前面,
+             是為了讓一般使用者與管理者看到的選單**結尾**一樣;「備份與還原」則是各群組
+             的最後一項,藏起來也不會讓「分享與備份」那一群看起來缺一角。按鈕不需要額外
+             綁定——第 24 行的 querySelectorAll 是通用的。 -->
+        <button type="button" class="settings-tab" data-tab="about" data-i18n="settings.tabAbout">關於本專案</button>
+      </nav>
+      <div class="settings-main" id="settingsPanels">
+        <!-- 每一列都是「標題 + 這個格式到底帶走什麼」兩行。以前是四顆純標題的列
+             加上底下一段共用說明,而那段說明緊貼在最後一顆(匯出 ZIP)下面,
+             讀起來像是只在講 ZIP——說明講的其實是三種格式的差別。 -->
+        <div class="settings-panel" data-panel="transfer">
+          <div class="settings-group">
+            <button class="settings-row" id="menuImport">
+              <span class="settings-row-title" data-i18n="transfer.import">匯入…</span>
+              <span class="settings-row-desc" data-i18n="transfer.importDesc">讀入 JSON / CSV / ZIP 備份檔。同 ID 的既有名詞會被覆蓋。</span>
+            </button>
+            <button class="settings-row" data-fmt="json">
+              <span class="settings-row-title" data-i18n="transfer.exportJson">匯出 JSON</span>
+              <span class="settings-row-desc" data-i18n="transfer.exportJsonDesc">只有文字內容(名詞、關鍵字、欄位樣板)。圖片與附件不在裡面,匯入後會失效。</span>
+            </button>
+            <button class="settings-row" data-fmt="csv">
+              <span class="settings-row-title" data-i18n="transfer.exportCsv">匯出 CSV</span>
+              <span class="settings-row-desc" data-i18n="transfer.exportCsvDesc">試算表格式,適合用 Excel 檢視或整批編修。同樣不含圖片與附件。</span>
+            </button>
+            <button class="settings-row" data-fmt="zip">
+              <span class="settings-row-title" data-i18n="transfer.exportZip">匯出 ZIP(含附件)</span>
+              <span class="settings-row-desc" data-i18n="transfer.exportZipDesc">完整備份:文字內容,加上說明欄的圖片與附件實體檔案。要搬到另一台請用這個。</span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="tags">
+          <!-- 兩個批次整理的工具擺在手動整理的**上面**(2026-08-08 從「AI 功能 → 內容管理」
+               搬回來):它們作用的對象跟底下那份清單完全是同一批標籤,被「要不要用 AI」
+               這條實作細節的線分到兩個分頁,只會讓「我想整理標籤」得在兩頁之間來回。
+               順序是工作流的順序——先把重複的收掉,再請 AI 分組(先去重,AI 才不會把
+               同一個東西的兩種寫法分到兩個群組)。
+               ⚠ 這兩張卡必須是 #tagManagerList 的**兄弟節點**,不能塞進去:
+               renderTagManager() 會整包重寫那個容器,而套用分組/合併都會觸發它——
+               放進去等於每次套用都把自己的審核清單洗掉。 -->
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="tagdup.title">標籤相似度重複偵測</span>
+            </div>
+            <div class="hint" data-i18n="tagdup.desc">找出其實是同一個東西、卻被記成好幾個標籤的情況:大小寫、全形半形、空白與標點的差異。這一層是純字串比對,不需要 AI;掃完之後可以再請 AI 找出寫法完全不同但意思相同的(回焊爐 / Reflow Oven)。</div>
+            <div class="settings-section-ctrl">
+              <button type="button" class="btn primary" id="tagdupScan" data-i18n="tagdup.scan">開始掃描</button>
+            </div>
+            <div class="settings-section-result" id="tagdupResult" style="display:none"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="tagmgr.autogroupTitle">AI 自動分組建議</span>
+              <span class="hint" data-i18n="tagmgr.autogroupNeedAi">需啟用 AI 生成功能</span>
+            </div>
+            <div class="hint" data-i18n="tagmgr.autogroupDesc">請 AI 分析尚未分組的標籤,建議合適的群組;你可以逐項勾選要套用的分組。</div>
+            <div class="settings-section-ctrl">
+              <button type="button" class="btn primary" id="autogroupRun" data-i18n="tagmgr.autogroupRun">開始分析</button>
+            </div>
+            <div class="settings-section-result" id="autogroupResult" style="display:none"></div>
+          </div>
+          <!-- 工具列只剩「匯出所選」那組:分組動作已搬進各自的區段標題列
+               (移出群組 → 已分組、加入群組 → 未分組),動作就在它作用的那一區旁邊。
+               兩顆匯出鈕用 .btn.outline 描邊——.btn 預設無框無底,擺在這裡跟旁邊的
+               區段標題一樣都是淡色文字,看起來不像可以按的東西。 -->
+          <div class="tagmgr-toolbar" id="tagmgrToolbar">
+            <!-- 搜尋欄必須待在 #tagManagerList 之外(同上面兩張卡的理由):
+                 renderTagManager() 每次整包重寫那個容器,放進去輸入值與焦點會被洗掉。 -->
+            <input type="search" id="tagmgrSearch" class="tagmgr-search"
+              data-i18n-ph="tagmgr.searchPh" placeholder="搜尋標籤或群組…">
+            <span class="hint" data-i18n="tagmgr.exportSelHint">勾選標籤後,可把那些標籤底下的名詞單獨匯出。</span>
+            <span class="spacer"></span>
+            <button type="button" class="btn outline" id="tagmgrExportJson" data-i18n="tagmgr.exportSelJson" data-i18n-title="tagmgr.exportSelJsonTitle" title="匯出勾選標籤的所有名詞">匯出所選 JSON</button>
+            <button type="button" class="btn outline" id="tagmgrExportCsv" data-i18n="tagmgr.exportSelCsv" data-i18n-title="tagmgr.exportSelJsonTitle" title="匯出勾選標籤的所有名詞">匯出所選 CSV</button>
+          </div>
+          <!-- 內含兩區各自的 .tagmgr-list 格子(已分組 / 未分組),見 settings.js:renderTagManager -->
+          <div id="tagManagerList"></div>
+          <div class="tagmgr-footer">
+            <button type="button" class="btn danger" id="tagmgrDissolveAll" data-i18n="tagmgr.dissolveAll">全部打散(恢復到只有標籤)</button>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="templates">
+          <!-- 「＋新增樣板」已移除(2026-08-06):新樣板統一由 內容 → 外掛模組 安裝取得。
+               後端 POST /api/templates 仍在(MCP server 的 create_template 在用),只收掉 UI 入口。 -->
+          <div class="tplmgr-toolbar">
+            <span class="hint" data-i18n="tplmgr.newViaPlugins">新樣板由「內容 → 外掛模組」安裝取得。</span>
+            <span class="spacer"></span>
+            <button type="button" class="btn outline" id="tplmgrExport" data-i18n="tplmgr.export">匯出樣板</button>
+            <button type="button" class="btn outline" id="tplmgrImport" data-i18n="tplmgr.import">匯入樣板…</button>
+          </div>
+          <div class="hint" data-i18n="tplmgr.transferHint">只帶欄位樣板本身(欄位定義與 AI 指示),不含任何名詞。匯入時同 id 的樣板會保留本機現有的設定,不會被覆蓋。</div>
+          <div class="tplmgr-list" id="templateManagerList"></div>
+        </div>
+        <div class="settings-panel" data-panel="ai">
+          <div class="aimgr-editor" id="aiSettingsForm">
+            <!-- 站台層設定:只有管理者改得動,其他人看到的是唯讀畫面(見 settings.js:renderAISettings) -->
+            <div class="hint" id="ai_admin_only" data-i18n="ai.adminOnly" style="display:none">AI 連線設定由站台管理者統一管理,這裡只能檢視。</div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="ai_enabled">
+              <span data-i18n="ai.enable">啟用 AI 生成(新建名詞時顯示「AI 生成」按鈕)</span>
+            </label>
+            <label class="aimgr-label" data-i18n="ai.apiStyle">API 格式</label>
+            <select id="ai_api_style">
+              <option value="ollama" data-i18n="ai.styleOllama">Ollama 原生</option>
+              <option value="openai" data-i18n="ai.styleOpenai">OpenAI 相容(LM Studio / llama.cpp / vLLM)</option>
+            </select>
+            <div class="hint" id="ai_style_hint" data-i18n="ai.styleOpenaiHint" style="display:none">OpenAI 相容模式的位址要填到 /v1 為止(例如 http://127.0.0.1:1234/v1)。此模式無法關閉思考型模型的推理,生成會比 Ollama 原生慢一些。</div>
+            <label class="aimgr-label" data-i18n="ai.baseUrl">服務位址</label>
+            <input type="text" id="ai_base_url" placeholder="http://127.0.0.1:11434">
+            <label class="aimgr-label" data-i18n="ai.apiKey">API 金鑰(選填)</label>
+            <!-- 金鑰不會從後端回傳明文,輸入框永遠是空的;留空存檔 = 不動既有金鑰,
+                 要拿掉得按「清除金鑰」(那顆才會送空字串過去)。 -->
+            <div class="ai-model-row">
+              <input type="password" id="ai_api_key" autocomplete="off" data-i18n-ph="ai.apiKeyPh" placeholder="本機服務通常留空">
+              <button type="button" class="btn" id="ai_clear_key" data-i18n="ai.clearKey" style="display:none">清除金鑰</button>
+            </div>
+            <label class="aimgr-label" data-i18n="ai.model">模型名稱</label>
+            <div class="ai-model-row">
+              <input type="text" id="ai_model" list="ai_model_list" placeholder="qwen2.5:14b">
+              <datalist id="ai_model_list"></datalist>
+              <button type="button" class="btn" id="ai_list_models" data-i18n="ai.listModels">列出模型</button>
+            </div>
+            <label class="aimgr-label" data-i18n="ai.embedModel">嵌入模型(語意檢索用)</label>
+            <input type="text" id="ai_embed_model" list="ai_model_list" data-i18n-ph="ai.embedModelPh" placeholder="例如 nomic-embed-text、bge-m3;留空則停用語意檢索">
+            <div class="hint" id="ai_models_status" style="display:none"></div>
+            <div class="ai-models-picker" id="ai_models_picker" style="display:none">
+              <div class="hint" data-i18n="ai.pickHint">服務端不會標明哪些是嵌入模型,請依模型名稱判斷(例如 bge-m3、nomic-embed-text 是嵌入模型)。</div>
+              <div class="ai-models-list" id="ai_models_list_box"></div>
+            </div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="ai_desc_limit">
+              <span data-i18n="ai.descLimit">限制 AI 生成的說明字數</span>
+            </label>
+            <div id="ai_desc_limit_row">
+              <label class="aimgr-label" data-i18n="ai.descMaxChars">字數上限</label>
+              <input type="number" id="ai_desc_max" min="50" max="2000" step="10">
+              <div class="hint" data-i18n="ai.descLimitHint">以字元計,寫進 AI 指示、不是硬截斷,實際長度會略有出入。部分樣板(如「一段話解讀」)的指示本身要求較長內容,與此限制打架時請調高或關閉。</div>
+            </div>
+            <div class="hint" data-i18n="ai.hint">AI 生成的「指示內容」改到各欄位樣板各自設定(設定 → 欄位樣板 → 編輯)。JSON 輸出格式由程式固定附加。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="ai_save" data-i18n="ai.save">儲存</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="semantic">
+          <div class="aimgr-editor" id="semanticForm">
+            <div class="hint" data-i18n="sem.intro">語意檢索讓你用「意思」找名詞——就算想不起來它叫什麼,描述得出它在講什麼就找得到。需要先在「AI 生成」分頁設定嵌入模型,再在這裡建立索引。</div>
+            <div class="sem-status" id="semStatus"></div>
+            <div class="hint" data-i18n="sem.staleHint">名詞新增或修改後不會自動更新索引(存檔絕不該因為模型服務掛掉而變慢或失敗),請不時回來按一次「建立‧更新索引」。</div>
+            <div class="tplmgr-editor-actions">
+              <button type="button" class="btn" id="semClear" data-i18n="sem.clear">清除索引</button>
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="semReindex" data-i18n="sem.reindex">建立‧更新索引</button>
+            </div>
+            <div class="hint" id="semProgress" style="display:none"></div>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="plugins">
+          <div class="plugmgr" id="pluginList"></div>
+        </div>
+        <div class="settings-panel" data-panel="trash">
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="trash.title">資源回收桶</span>
+              <button type="button" class="btn danger" id="trashEmpty" data-i18n="trash.emptyAll">清空回收桶</button>
+            </div>
+            <div class="hint" id="trashDesc"></div>
+            <!-- 逐筆的還原/永久刪除按鈕在 settings.js:renderTrash 動態產生 -->
+            <div class="tplmgr-list" id="trashList"></div>
+          </div>
+        </div>
+        <!-- 整理與清理:三個區塊都是「對既有資料做批次動作」,順序刻意由安全到危險,
+             不可復原的「刪除內容」墊在最底部並用紅框隔開。 -->
+        <div class="settings-panel" data-panel="cleanup">
+          <!-- 健康度檢查與重複偵測各佔一整列(曾經並排成兩欄,已改回單欄):兩段都唯讀
+               (只報告、不修,理由見 app/health.py 檔頭),但**結果才是主體**——一份
+               逐筆列出「哪個名詞、哪裡壞掉」的清單。並排時每欄只剩一半寬,名詞名稱
+               與後面那句說明會被擠成兩三行,而那正是使用者要一眼掃過去的東西。
+               診斷入口本身只有一顆按鈕,並不需要並排比較。 -->
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="health.title">內容健康度檢查</span>
+            </div>
+            <div class="hint" data-i18n="health.desc">掃過整個庫,找出已經壞掉的東西(附件檔案不見了、說明欄的圖變成破圖)、在浪費空間的東西(過大的檔案、沒有名詞引用的孤兒檔),以及還沒整理完的內容(沒有關鍵字、沒有說明、連結指向不存在的名詞)。只會報告,不會自動更動或刪除任何東西。</div>
+            <div class="settings-section-ctrl">
+              <button type="button" class="btn primary" id="healthScan" data-i18n="health.scan">開始檢查</button>
+            </div>
+            <div class="settings-section-result" id="healthResult" style="display:none"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="dedup.title">重複偵測</span>
+            </div>
+            <div class="hint" data-i18n="dedup.desc">找出同一個詞被記了不只一次的名詞:大小寫/全形半形/空白差異、標點差異,以及用別名記下別人已經記過的詞。合併會把說明、標籤、附件收成一筆,被併掉的移進回收桶(可還原)。</div>
+            <div class="settings-section-ctrl">
+              <button type="button" class="btn primary" id="dedupScan" data-i18n="dedup.scan">開始掃描</button>
+            </div>
+            <div class="settings-section-result" id="dedupResult" style="display:none"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="imgcomp.title">圖片壓縮</span>
+            </div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="imgCompressToggle">
+              <span data-i18n="imgcomp.enable">上傳圖片前先壓縮</span>
+            </label>
+            <div class="hint" data-i18n="imgcomp.desc">長邊縮到 2000px、重新編碼成 WebP,並順帶移除 EXIF(含 GPS 位置)。GIF/SVG、夠小的圖、壓完反而更大的一律維持原檔。</div>
+            <div class="settings-section-ctrl">
+              <button type="button" class="btn" id="imgCompressRun" data-i18n="imgcomp.run">壓縮既有的圖片附件</button>
+            </div>
+            <div class="settings-section-result" id="imgCompressResult" style="display:none"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="sharemgr.title">公開分享連結</span>
+            </div>
+            <div class="hint" data-i18n="sharemgr.desc">一鍵作廢你所有仍有效的公開分享連結,舊網址立刻打不開。連結本身另有時限、到期會自動失效;這裡是不想等的時候立刻全部收回的開關。</div>
+            <div class="settings-section-ctrl">
+              <span class="hint" id="shareStatsLine"></span>
+              <button type="button" class="btn danger" id="shareRevokeAll" data-i18n="sharemgr.revokeAll">全部撤銷</button>
+            </div>
+            <div class="settings-section-result" id="shareRevokeResult" style="display:none"></div>
+          </div>
+          <div class="settings-section settings-section-danger">
+            <div class="settings-section-head">
+              <span class="settings-section-title" data-i18n="tagmgr.purgeTitle">刪除內容</span>
+            </div>
+            <div class="hint" data-i18n="tagmgr.purgeDesc">永久刪除名詞(含圖片/附件),不經過回收桶、無法復原;標籤與樣板定義會保留。</div>
+            <div class="settings-section-ctrl">
+              <label class="settings-section-nlabel"><span data-i18n="tagmgr.purgeScope">刪除範圍</span>
+                <select id="purgeScope"></select></label>
+              <button type="button" class="btn danger" id="purgeRun" data-i18n="tagmgr.purgeRun">刪除</button>
+            </div>
+            <div class="settings-section-result" id="purgeResult" style="display:none"></div>
+          </div>
+        </div>
+        <!-- 偏好設定分成「語言」與「外觀」兩群:四張卡平鋪時全部長得一樣
+             (都是 .aimgr-editor),讀起來是一長條沒有層次的設定,而它們其實
+             回答的是兩個不同的問題。群組標題用 .settings-grouphead,視覺語彙
+             沿用左側 nav 的 .settings-navgroup(同樣是「這底下是一群」的標籤)。 -->
+        <!-- 帳號:登入方式現況(has_password/has_google 搭 /api/auth/me 回來,存 state.me)
+             與變更密碼。「兩種登入方式至少留一種」的防呆在後端(routers/auth.py),
+             這裡的按鈕顯示/隱藏只是把做不到的事先藏起來。 -->
+        <div class="settings-panel" data-panel="account">
+          <div class="settings-grouphead" data-i18n="account.groupLogin">登入方式</div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="account.email">帳號 Email</label>
+            <input type="text" id="acct_email" disabled>
+            <div class="settings-duo">
+              <div>
+                <label class="aimgr-label" data-i18n="account.methodPassword">Email + 密碼</label>
+                <div class="hint" id="acct_pw_state"></div>
+                <button type="button" class="btn danger" id="acct_pw_disable" data-i18n="account.disable" style="display:none">停用</button>
+              </div>
+              <div>
+                <label class="aimgr-label" data-i18n="account.methodGoogle">Google 登入</label>
+                <div class="hint" id="acct_google_state"></div>
+                <button type="button" class="btn danger" id="acct_google_unlink" data-i18n="account.unlink" style="display:none">解除連結</button>
+                <a class="btn outline" id="acct_google_link" href="/api/auth/google/login" data-i18n="account.linkGoogle" style="display:none">連結 Google 帳號</a>
+              </div>
+            </div>
+            <div class="hint" data-i18n="account.methodsHint">兩種登入方式至少要保留一種。連結 Google 時,請選擇與此帳號相同 email 的 Google 帳號——選了其他 email 會直接登入成另一個帳號。</div>
+          </div>
+          <div class="settings-grouphead" data-i18n="account.groupPassword">密碼</div>
+          <div class="aimgr-editor">
+            <div id="acct_pw_current_wrap">
+              <label class="aimgr-label" data-i18n="account.current">目前密碼</label>
+              <input type="password" id="acct_pw_current" autocomplete="current-password">
+            </div>
+            <label class="aimgr-label" data-i18n="account.newPw">新密碼</label>
+            <input type="password" id="acct_pw_new" autocomplete="new-password">
+            <label class="aimgr-label" data-i18n="account.confirmPw">確認新密碼</label>
+            <input type="password" id="acct_pw_confirm" autocomplete="new-password">
+            <div class="hint" data-i18n="account.pwHint">至少 8 個字元。Google 登入的帳號設定密碼後,即可同時使用 Email + 密碼登入。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="acct_pw_save">變更密碼</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="preference">
+          <div class="settings-grouphead" data-i18n="pref.groupLang">語言</div>
+          <!-- 介面語言與 AI 生成語言並排:後者的預設值就是「跟隨前者」,兩個下拉
+               看得到彼此才知道自己現在選的是什麼。 -->
+          <div class="settings-duo">
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="lang.label">介面語言</label>
+            <select id="lang_select">
+              <option value="auto" data-i18n="lang.auto">自動(依系統語言判別)</option>
+              <option value="zh-Hant">繁體中文</option>
+              <option value="zh-Hans">简体中文</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="hi">हिन्दी</option>
+              <option value="id">Bahasa Indonesia</option>
+              <option value="it">Italiano</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="pt">Português</option>
+              <option value="es">Español</option>
+            </select>
+            <div class="hint" data-i18n="lang.hint">變更後頁面會立即重新載入。系統語言不在支援清單時,預設使用英文。</div>
+          </div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="lang.aiLabel">AI 生成語言</label>
+            <select id="ai_lang_select">
+              <option value="auto" data-i18n="lang.aiFollow">跟隨介面語言</option>
+              <option value="zh-Hant">繁體中文</option>
+              <option value="zh-Hans">简体中文</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="hi">हिन्दी</option>
+              <option value="id">Bahasa Indonesia</option>
+              <option value="it">Italiano</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="pt">Português</option>
+              <option value="es">Español</option>
+            </select>
+            <div class="hint" data-i18n="lang.aiHint">AI 生成內容(名詞說明、標籤建議…)使用的語言,預設跟隨介面語言。</div>
+          </div>
+          </div>
+          <div class="settings-grouphead" data-i18n="pref.groupLook">外觀</div>
+          <!-- 淺色/深色兩排色票並排:各 3 個變體,一欄放得下一整排,而上下疊放時
+               兩排之間只有 label 的 9px,讀起來像同一排被硬拆成兩段。 -->
+          <div class="aimgr-editor">
+            <div class="settings-duo">
+              <div>
+                <label class="aimgr-label" data-i18n="theme.lightLabel">淺色配色</label>
+                <div class="theme-swatch-row" id="themeSwatchLight"></div>
+              </div>
+              <div>
+                <label class="aimgr-label" data-i18n="theme.darkLabel">深色配色</label>
+                <div class="theme-swatch-row" id="themeSwatchDark"></div>
+              </div>
+            </div>
+            <div class="hint" data-i18n="theme.hint">點選立即套用。深淺色各自記住選擇,之後用 ⚙️ 選單切換深/淺色時會回到記住的配色。</div>
+          </div>
+          <!-- 背景圖片:裝置本地偏好(localStorage 的 dataURL),不上伺服器、不進備份。
+               套用邏輯在 theme.js(零依賴層),這裡只有 UI。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="bg.title">背景圖片</label>
+            <input type="file" id="bg_file" accept="image/*" style="display:none">
+            <div class="tplmgr-editor-actions" style="justify-content:flex-start">
+              <button type="button" class="btn outline" id="bg_upload" data-i18n="bg.upload">上傳圖片…</button>
+              <button type="button" class="btn danger" id="bg_remove" data-i18n="bg.remove">移除</button>
+            </div>
+            <label class="aimgr-label" data-i18n="bg.intensity">顯示強度</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="range" id="bg_dim" min="10" max="100" step="5" style="flex:1">
+              <span id="bg_dim_val" class="hint" style="margin:0">30%</span>
+            </div>
+            <div class="hint" data-i18n="bg.hint">只存在此裝置的瀏覽器,不會上傳到伺服器、也不進整站備份。上傳前會自動壓縮;圖片只透出在版面空隙處,卡片與面板維持不透明。</div>
+          </div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="brand.title">Logo 與標語</label>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="brand_hide">
+              <span data-i18n="brand.hide">隱藏 Logo 與標語文字</span>
+            </label>
+            <label class="aimgr-label" data-i18n="brand.textLabel">Logo 文字</label>
+            <input type="text" id="brand_text" data-i18n-ph="brand.textPh" placeholder="Jargon Vault">
+            <label class="aimgr-label" data-i18n="brand.subLabel">標語文字</label>
+            <input type="text" id="brand_sub" data-i18n-ph="brand.subPh" placeholder="名詞術語庫">
+            <div class="hint" data-i18n="brand.hint">留空使用預設值。儲存後會重新整理頁面套用。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="brand_save" data-i18n="brand.save">儲存</button>
+            </div>
+          </div>
+          <!-- 複習一輪幾張:選了就存,不 reload(值在每次抽卡當下才讀,同 AI 生成語言)。
+               選項清單與預設值的真相在 static/js/config.js:SRS_SIZES,這裡由 JS 填。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="pref.srsSize">複習一輪的張數</label>
+            <select id="srs_size_select"></select>
+            <div class="hint" data-i18n="pref.srsSizeHint">一輪抽完就結束,不會累積、也不會提醒你「還有幾張到期」。覺得一次太多就調小。</div>
+          </div>
+        </div>
+        <!-- 公開筆記快照:發佈/更新/撤下自己的凍結快照(app/publish.py)。
+             渲染見 settings.js:renderPublishManager;站台開關關著時只顯示提示。 -->
+        <div class="settings-panel" data-panel="publish">
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="publish.title">公開筆記</label>
+            <div class="hint" data-i18n="publish.hint">把整庫或選定範圍發佈成一份凍結快照:任何人拿到連結就能閱讀,也能下載匯出檔匯入自己的庫接手維護。內容不會自動更新——按「更新內容」才會用目前庫裡的內容覆蓋快照;隨時可撤下。</div>
+            <div id="pubMgrForm" style="display:none">
+              <input type="text" id="pub_title" spellcheck="false" data-i18n-ph="publish.titlePh" placeholder="標題(顯示在公開頁頂端,可留空)">
+              <input type="text" id="pub_tags" spellcheck="false" data-i18n-ph="publish.tagsPh" placeholder="標籤(逗號分隔;留空 = 整庫)">
+              <input type="text" id="pub_group" spellcheck="false" data-i18n-ph="publish.groupPh" placeholder="標籤群組(留空 = 不限)">
+              <div class="tplmgr-editor-actions">
+                <span class="spacer"></span>
+                <button type="button" class="btn primary" id="pub_create" data-i18n="publish.create">發佈</button>
+              </div>
+            </div>
+            <div class="hint" id="pubMgrDisabled" style="display:none" data-i18n="publish.disabledHint">站台尚未啟用公開筆記(管理 → 站台功能)。</div>
+            <div id="pubMgrList"></div>
+          </div>
+        </div>
+
+        <!-- 整站備份:所有使用者的資料 + 全域帳號與站台設定。與同群組的「匯出/入」
+             完全不同(那個是使用者搬自己的庫到另一台),取捨對照表見 app/backup.py。
+             只有管理者看得到這個分頁(app.js 依 is_admin 切 #settingsTabBackup)。 -->
+        <div class="settings-panel" data-panel="backup">
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.bkTitle">備份與還原</label>
+            <div class="hint" data-i18n="admin.bkHint">整站備份:所有使用者的名詞、附件、回收桶與各自的設定,加上帳號登記簿與站台設定。可重建的搜尋索引與語意向量不含在內(還原後自動重建)。這與「匯出/入」不同——那是把自己的庫搬到另一台,這是同一台的災難復原。</div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_bk_auto">
+              <span data-i18n="admin.bkAuto">啟用自動備份</span>
+            </label>
+            <div class="admin-grid">
+              <label class="settings-section-nlabel"><span data-i18n="admin.bkInterval">間隔天數</span>
+                <input type="number" id="admin_bk_interval" min="1" max="365" step="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.bkKeep">保留份數</span>
+                <input type="number" id="admin_bk_keep" min="1" max="500" step="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.bkAtTime">備份時間</span>
+                <input type="time" id="admin_bk_at"></label>
+            </div>
+            <div class="hint" data-i18n="admin.bkAtTimeHint">備份時間留空 = 到期就備份。填了時間則是「不早於」這個時刻:間隔到期後,要等當天過了這個時間、而且有人開啟網站時才會真的執行(本站刻意沒有常駐排程器)。那天沒人開就順延到下一次有人開的時候。</div>
+            <div class="hint" id="admin_bk_status"></div>
+            <div class="tplmgr-editor-actions">
+              <button type="button" class="btn" id="admin_bk_now" data-i18n="admin.bkNow">立刻備份</button>
+              <button type="button" class="btn" id="admin_bk_upload" data-i18n="admin.bkUpload">上傳備份檔…</button>
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_bk_save" data-i18n="admin.save">儲存</button>
+            </div>
+            <input type="file" id="admin_bk_file" accept=".zip" style="display:none">
+          </div>
+          <!-- 備份紀錄自己一張卡:它是清單不是設定,黏在「儲存」那排動作鈕下面會讓人
+               以為第一列是剛剛按下去的結果(而且「儲存」存的是上面的自動備份參數,
+               跟下面列的哪一包都沒關係)。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.bkListTitle">備份紀錄</label>
+            <div class="tplmgr-list" id="adminBackupList"></div>
+          </div>
+        </div>
+
+        <!-- 管理分頁分成三群:誰進得來(註冊模式/白名單/Google 登入/登入保護)、
+             站台功能開關(公開分享)、名單(使用者/團隊救援)。八張卡以前是平鋪的,
+             每張都長一樣、每張都有自己的「儲存」,看起來像八個互不相干的表單——
+             實際上前四張是同一個決策的四個面向(白名單只在註冊模式=白名單時有意義)。
+             ⚠ 每張卡各自一顆儲存鈕是刻意的,別「順手」收成一顆:它們打的是四支
+             不同的 admin 端點,合併就得在前端組出跨端點的交易語意。 -->
+        <div class="settings-panel" data-panel="admin">
+          <div class="settings-grouphead" data-i18n="admin.groupAccess">誰進得來</div>
+          <div class="hint settings-groupdesc" data-i18n="admin.groupAccessDesc">這一群決定誰拿得到帳號、用什麼方式登入,以及怎麼擋住猜密碼。只影響「新帳號註冊」與「登入」,既有帳號的資料不受影響。</div>
+          <!-- 註冊模式與白名單並排:白名單是「註冊模式 = 白名單」時才生效的參數,
+               看不到彼此的話,改了白名單卻沒改模式(或反過來)完全沒有提示。 -->
+          <div class="settings-duo">
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.regMode">註冊模式</label>
+            <select id="admin_reg_mode">
+              <option value="open" data-i18n="admin.regOpen">開放:任何人皆可註冊</option>
+              <option value="whitelist" data-i18n="admin.regWhitelist">白名單:僅名單內 email 可註冊</option>
+              <option value="closed" data-i18n="admin.regClosed">關閉:不開放註冊</option>
+            </select>
+            <div class="hint" data-i18n="admin.regHint">既有帳號的登入不受此設定影響;此設定只管新帳號註冊與 Google 首次登入。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_reg_save" data-i18n="admin.save">儲存</button>
+            </div>
+          </div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.whitelist">Email 白名單</label>
+            <textarea id="admin_whitelist" rows="5" spellcheck="false" data-i18n-ph="admin.whitelistPh" placeholder="每行一個 email"></textarea>
+            <div class="hint" data-i18n="admin.whitelistHint">每行一個 email。白名單模式下,只有名單內的 email 能註冊。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_whitelist_save" data-i18n="admin.save">儲存</button>
+            </div>
+          </div>
+          </div>
+          <!-- 站台註冊邀請連結:持有連結即可註冊,繞過註冊模式與白名單——
+               它本質是註冊控制,所以放在「誰進得來」這一群、收站台 admin。
+               一次性/7 天/可撤銷是配套防線(見 app/invites.py 檔頭)。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.invTitle">註冊邀請連結</label>
+            <div class="hint" data-i18n="admin.invHint">產生一條邀請連結給還沒有帳號的人;持有連結就能註冊,不受註冊模式與白名單限制。預設一次性、7 天後過期,隨時可撤銷。</div>
+            <div class="admin-grid">
+              <label class="settings-section-nlabel"><span data-i18n="admin.invUses">可用次數</span>
+                <input type="number" id="admin_inv_uses" min="1" max="200" step="1" value="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.invTtl">有效天數</span>
+                <input type="number" id="admin_inv_ttl" min="1" max="90" step="1" value="7"></label>
+            </div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn outline" id="admin_inv_create" data-i18n="admin.invCreate">產生邀請連結</button>
+            </div>
+            <div id="adminInvitesList"></div>
+          </div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.oauthTitle">Google 登入</label>
+            <div class="hint" data-i18n="admin.oauthDesc">讓使用者用 Google 帳號登入,不必再記一組密碼。要先到 Google Cloud Console 申請一組 OAuth 用戶端,把下面兩個欄位填進來。首次用 Google 登入的人一樣受上面的註冊模式與白名單限制。</div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_oauth_enabled">
+              <span data-i18n="admin.oauthEnable">啟用 Google 登入</span>
+            </label>
+            <label class="aimgr-label" data-i18n="admin.oauthClientId">Client ID</label>
+            <input type="text" id="admin_oauth_client_id" spellcheck="false" placeholder="xxxx.apps.googleusercontent.com">
+            <label class="aimgr-label" data-i18n="admin.oauthSecret">Client Secret</label>
+            <input type="password" id="admin_oauth_secret" spellcheck="false" autocomplete="new-password">
+            <div class="hint" data-i18n="admin.oauthHint">Secret 儲存後不再顯示;留空代表沿用已儲存的值。Redirect URI 填 &lt;網址&gt;/api/auth/google/callback。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_oauth_save" data-i18n="admin.save">儲存</button>
+            </div>
+          </div>
+          <!-- 登入保護:POST /api/auth/login 的失敗鎖定。bcrypt 只讓每次嘗試變慢,
+               擋不住整夜刷,而這個站台預期會掛到公網(見 PUBLIC_BASE_URL)。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.rlTitle">登入保護</label>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_rl_enabled">
+              <span data-i18n="admin.rlEnable">啟用登入失敗鎖定</span>
+            </label>
+            <div class="hint" data-i18n="admin.rlHint">在時間窗內連續失敗達到門檻就暫時鎖住,鎖定期間連正確密碼也擋(否則猜中就直接通過)。兩個維度各自獨立:每個 IP 擋「一台機器噴很多帳號」,每個帳號擋「很多機器噴同一個帳號」。</div>
+            <div class="admin-grid">
+              <label class="settings-section-nlabel"><span data-i18n="admin.rlIpMax">每個 IP 上限</span>
+                <input type="number" id="admin_rl_ip_max" min="1" max="10000" step="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.rlEmailMax">每個帳號上限</span>
+                <input type="number" id="admin_rl_email_max" min="1" max="10000" step="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.rlWindow">計數時間窗(分鐘)</span>
+                <input type="number" id="admin_rl_window" min="1" max="1440" step="1"></label>
+              <label class="settings-section-nlabel"><span data-i18n="admin.rlLockout">鎖定時間(分鐘)</span>
+                <input type="number" id="admin_rl_lockout" min="1" max="1440" step="1"></label>
+            </div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_rl_xff">
+              <span data-i18n="admin.rlTrustXff">採信 X-Forwarded-For 標頭(站台在反向代理/Cloudflare Tunnel 後面時才開)</span>
+            </label>
+            <div class="hint" data-i18n="admin.rlXffHint">兩個方向都會出事:掛在代理後面卻不開,所有人的來源位址都是代理那一個,任何人失敗幾次就把全部人鎖在門外;沒有代理卻打開,這個標頭由用戶端任意填,攻擊者每次換一個假位址就繞過了每個 IP 的限制(每個帳號那條仍然有效)。</div>
+            <div class="tplmgr-editor-actions">
+              <button type="button" class="btn" id="admin_rl_reset" data-i18n="admin.rlReset">立刻解除所有鎖定</button>
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_rl_save" data-i18n="admin.save">儲存</button>
+            </div>
+          </div>
+
+          <div class="settings-grouphead" data-i18n="admin.groupFeature">站台功能</div>
+          <div class="hint settings-groupdesc" data-i18n="admin.groupFeatureDesc">全站共用的功能開關,一改就影響所有使用者。</div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.sharingTitle">公開分享連結</label>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_public_share_enabled">
+              <span data-i18n="admin.publicShareEnable">啟用公開分享連結(擁有者可產生不需登入即可開啟的單筆連結)</span>
+            </label>
+            <div class="hint" data-i18n="admin.publicShareHint">預設關閉。啟用後使用者可對自己的名詞產生公開連結;連結可隨時撤銷,回應一律標記 noindex 不被搜尋引擎收錄。關閉此開關會讓所有既有連結立刻失效。</div>
+            <label class="aimgr-toggle">
+              <input type="checkbox" id="admin_public_notebook_enabled">
+              <span data-i18n="admin.notebookEnable">啟用公開筆記(使用者可把自己的庫發佈成免登入可讀的凍結快照)</span>
+            </label>
+            <div class="hint" data-i18n="admin.notebookHint">預設關閉。快照存在使用者目錄之外,帳號刪除後仍在;回應一律標記 noindex 不被搜尋引擎收錄。關閉此開關會讓所有既有快照立刻失效(檔案保留,重開即恢復)。</div>
+            <div class="tplmgr-editor-actions">
+              <span class="spacer"></span>
+              <button type="button" class="btn primary" id="admin_sharing_save" data-i18n="admin.save">儲存</button>
+            </div>
+          </div>
+
+          <div class="settings-grouphead" data-i18n="admin.groupPeople">使用者與團隊</div>
+          <div class="hint settings-groupdesc" data-i18n="admin.groupPeopleDesc">帳號的名單管理。</div>
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.users">使用者</label>
+            <div class="tplmgr-list" id="adminUsersList"></div>
+          </div>
+          <!-- 全站公開筆記快照:孤兒(擁有者帳號已刪)只有這裡清得掉(app/publish.py)。 -->
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="admin.pubTitle">公開筆記</label>
+            <div class="hint" data-i18n="admin.pubHint">全站已發佈的快照。擁有者帳號已刪除的快照(孤兒)只有這裡清得掉。</div>
+            <div id="adminPublishedList"></div>
+          </div>
+        </div>
+        <!-- 關於本專案:版本號 + 回報管道 + 授權。刻意零新 CSS——全部複用
+             .aimgr-editor / .aimgr-label / .settings-section-title / .hint /
+             .tplmgr-editor-actions / .btn。外部連結用 <a class="btn"> 放進
+             .tplmgr-editor-actions:那是 flex 容器,anchor 會成為 flex item,
+             .btn 的 padding 才吃得到(main.css 沒有全域 a{} 規則)。
+             ⚠ 帶 data-i18n 的節點只能放純文字——applyI18n() 對它是寫 textContent,
+             文字裡塞 <a> 會被整段吃掉,所以連結一律是獨立的兄弟節點。
+             網址寫死在這裡、不進 config.js:專案級固定字串,沒有 JS 要讀它,
+             放進 config.js 只會多一個 import(也就多一處要 bump 的快取版號)卻沒人受益。 -->
+        <div class="settings-panel" data-panel="about">
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="about.versionLabel">版本</label>
+            <span class="settings-section-title" id="about_version">—</span>
+            <div class="hint" data-i18n="about.tagline">本機優先的名詞術語庫:把工作上遇到的行話、縮寫與代號記下來,慢慢變成自己的知識。</div>
+            <div class="tplmgr-editor-actions">
+              <a class="btn" href="https://happenlist.com" target="_blank" rel="noopener noreferrer" data-i18n="about.site">官方網站</a>
+              <a class="btn" href="https://github.com/diegochen-tw/jargon-vault" target="_blank" rel="noopener noreferrer" data-i18n="about.repo">原始碼(GitHub)</a>
+              <a class="btn" href="https://github.com/diegochen-tw/jargon-vault/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" data-i18n="about.changelog">更新紀錄</a>
+            </div>
+          </div>
+
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="about.reportTitle">回報問題與建議</label>
+            <div class="hint" data-i18n="about.reportDesc">功能異常、版面跑掉、想要的功能,都歡迎到 GitHub 開一則 issue。請一併附上下方的環境資訊,能省下大量來回確認。</div>
+            <div class="tplmgr-editor-actions">
+              <a class="btn primary" href="https://github.com/diegochen-tw/jargon-vault/issues/new" target="_blank" rel="noopener noreferrer" data-i18n="about.reportLink">前往 GitHub Issues</a>
+              <button type="button" class="btn" id="about_copy_env" data-i18n="about.copyEnv">複製環境資訊</button>
+            </div>
+            <div class="hint" data-i18n="about.envHint">複製的內容只有版本號、瀏覽器識別字串與介面語言,不含你的帳號、網址或任何名詞內容。</div>
+          </div>
+
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="about.securityTitle">資安漏洞回報</label>
+            <div class="hint" data-i18n="about.securityDesc">資安問題請不要開公開 issue——公開的 issue 等於替所有還沒更新的站台發出一份攻擊說明。請改用 email 私下回報,或用 GitHub 的私密資安通報。回報範圍與處理時程見 SECURITY.md。</div>
+            <div class="tplmgr-editor-actions">
+              <a class="btn" href="mailto:diego.taoyuan@gmail.com?subject=%5Bjargon-vault%20security%5D" data-i18n="about.securityMail">寄信給維護者</a>
+              <a class="btn" href="https://github.com/diegochen-tw/jargon-vault/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" data-i18n="about.securityPolicy">閱讀 SECURITY.md</a>
+            </div>
+          </div>
+
+          <div class="aimgr-editor">
+            <label class="aimgr-label" data-i18n="about.licenseLabel">授權條款</label>
+            <div class="hint" data-i18n="about.licenseValue">MIT 授權:可自由使用、修改、自架、放進公司內部使用,保留著作權聲明即可。</div>
+            <div class="tplmgr-editor-actions">
+              <a class="btn" href="https://github.com/diegochen-tw/jargon-vault/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" data-i18n="about.licenseLink">閱讀授權全文</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="hl-toolbar" id="hlToolbar">
+  <span class="hl-toolbar-label" data-i18n="hl.label">畫重點</span>
+  <button type="button" class="hl-swatch" data-color="pink" style="--sw:#F43F5E" data-i18n-title="hl.pink" title="粉紅色(最重要)"></button>
+  <button type="button" class="hl-swatch" data-color="yellow" style="--sw:#EAB308" data-i18n-title="hl.yellow" title="黃色(重點)"></button>
+  <button type="button" class="hl-swatch" data-color="green" style="--sw:#10B981" data-i18n-title="hl.green" title="綠色(補充)"></button>
+  <button type="button" class="hl-swatch clear" data-color="clear" data-i18n-title="hl.clear" title="清除顏色">✕</button>
+  <span class="hl-sep"></span>
+  <button type="button" class="hl-act" id="hlMarkBtn" data-i18n-title="hl.mark" title="標記這筆名詞"><svg class="bm-ic" viewBox="0 0 14 18" aria-hidden="true"><path d="M2.4 1.4h9.2v15.2L7 12.4l-4.6 4.2z"/></svg></button>
+  <!-- 分享鈕用 emoji 而不是 inline SVG,所以可以掛 data-i18n-title(SVG 按鈕不行,
+       applyI18n 對它是寫 textContent,會把 SVG 整個清掉)。顯示條件見 detail.js:renderShareBtn -->
+  <button type="button" class="hl-act" id="hlShareBtn" data-i18n-title="share.btnTitle" title="建立公開分享連結" style="display:none">🔗</button>
+  <button type="button" class="hl-act" id="hlWidthBtn" data-i18n-title="hl.width" title="切換行寬(42/62 字)">▤</button>
+</div>
+
+<!-- 圖片檢視器(卡片縮圖點下去打開的簡易圖片瀏覽器,見 js/components/lightbox.js)。
+     刻意不共用 .modal-overlay/.modal-box:那組是「紙上的內容」(白底、圓角、內距、
+     max-width),圖片檢視器要的是滿版暗底把圖片襯出來,兩者只是碰巧都覆蓋全螢幕。
+     左右鈕與 ✕ 都只掛 data-i18n-title——它們的內容是 ‹ › ✕ 這些字元本身,
+     掛了 data-i18n 會被 applyI18n() 的 textContent 覆寫掉。 -->
+<div class="viewer-overlay" id="imageViewer">
+  <button type="button" class="viewer-close" id="viewerClose" data-i18n-title="detail.close" title="關閉(Esc)">✕</button>
+  <!-- 縮放控制:左上角,跟右上角的關閉鈕對稱。中間那顆顯示目前倍率、按了還原 100%,
+       所以它的 textContent 由 JS 寫,**不能**掛 data-i18n(applyI18n 會把倍率蓋掉),
+       只掛 data-i18n-title。滑鼠滾輪、雙擊、+/-/0 鍵、雙指捏合都做得到同一件事,
+       這排按鈕的存在是為了「看得出有這個功能」——手勢不會自己告訴使用者它存在。 -->
+  <div class="viewer-zoom" id="viewerZoom">
+    <button type="button" id="viewerZoomOut" data-i18n-title="viewer.zoomOut" title="縮小">−</button>
+    <button type="button" class="viewer-zoom-val" id="viewerZoomVal" data-i18n-title="viewer.zoomReset" title="還原原始大小">100%</button>
+    <button type="button" id="viewerZoomIn" data-i18n-title="viewer.zoomIn" title="放大">＋</button>
+  </div>
+  <button type="button" class="viewer-nav prev" id="viewerPrev" data-i18n-title="card.prevImage" title="上一張圖片">‹</button>
+  <figure class="viewer-stage">
+    <img id="viewerImg" alt="">
+    <figcaption class="viewer-caption">
+      <span class="viewer-title" id="viewerTitle"></span>
+      <span class="viewer-desc" id="viewerDesc"></span>
+      <span class="viewer-count" id="viewerCount"></span>
+    </figcaption>
+  </figure>
+  <button type="button" class="viewer-nav next" id="viewerNext" data-i18n-title="card.nextImage" title="下一張圖片">›</button>
+</div>
+
+<script type="module" src="/static/js/app.js?v=20260820a"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+# 測試。⚠ 這只在 GitHub 上跑 —— 日常的 origin 是自架 GitLab,平常 push 不會觸發
+# 任何檢查,實際上這條 pipeline 只在準備發佈、把分支推到 github remote 時才生效。
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一個分支的舊跑法自動取消,避免連續 push 疊出好幾個 45 分鐘的 job。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 秒級的守門測試,先跑:i18n 的 12 語系 key 對齊、版本號三處一致、純函式層。
+  # 這幾支抓得到最常見的低級錯誤(漏補一個語言、忘了改 CHANGELOG),
+  # 不必等下面那 4 個 shard 才知道。
+  quick:
+    name: quick checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: >-
+          pytest -q
+          tests/test_i18n.py tests/test_version.py tests/test_sanitize.py
+          tests/test_srs.py tests/test_llm.py tests/test_links.py
+          tests/test_atomic.py tests/test_paths.py
+
+  full:
+    name: full suite (${{ matrix.name }})
+    needs: quick
+    runs-on: ubuntu-latest
+    # ⚠ 這套測試很慢(全部一起跑要 30–50 分鐘),而且成本是二次方的:
+    #    tests/conftest.py 整個 session 共用一個 GLOSSARY_DATA_DIR,而每個
+    #    app_instance fixture 的 create_app() 會對「累積至今的所有」使用者目錄
+    #    重建一次索引。切成 4 份不只是平行化——每份的累積量只剩 1/4,
+    #    所以總 CPU 時間也會下降,不是單純拿空間換時間。
+    #    刻意不引入 pytest-split / pytest-xdist:多一個 dev 相依,而且 conftest
+    #    的共用暫存目錄對 xdist 不安全。
+    # ⚠ 檔案清單是寫死的 → 新增 tests/test_xxx.py 忘了掛進來就永遠不會被跑到。
+    #    tests/test_version.py:test_ci_workflow_runs_every_test_file 守著這件事。
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false   # 一個 shard 紅了仍要看得到其他 shard 的結果
+      matrix:
+        include:
+          - name: auth-admin
+            files: >-
+              tests/test_api.py tests/test_admin_api.py tests/test_site_settings.py
+              tests/test_ratelimit.py tests/test_backup.py tests/test_account_api.py
+              tests/test_optimistic_lock.py
+          - name: sharing
+            files: >-
+              tests/test_share_links_api.py tests/test_transfer_zip.py
+              tests/test_trash.py tests/test_invites.py tests/test_publish_api.py
+              tests/test_progress.py tests/test_demo.py
+          - name: ai-semantic-srs
+            files: >-
+              tests/test_semantic.py tests/test_semantic_api.py tests/test_srs_api.py
+              tests/test_ai.py tests/test_vectors.py
+              tests/test_plugins.py tests/test_plugin_catalog.py
+          - name: core
+            files: >-
+              tests/test_indexer_search.py tests/test_service.py tests/test_storage.py
+              tests/test_tags.py tests/test_templates.py tests/test_dedup.py
+              tests/test_tag_dedup.py tests/test_health.py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      # 刻意不加 -x:PR 上要一次看完所有失敗,提早結束只會多一輪來回。
+      # --durations 是給「哪一支開始變慢」留一條線索(見上面的二次方成本註解)。
+      - run: pytest -q --durations=15 ${{ matrix.files }}
