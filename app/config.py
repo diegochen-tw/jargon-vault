@@ -52,7 +52,7 @@ ROOT = _bundle_root()
 #   的中繼資料;對帳在 build 之前就做完了,不會有兩個版本號各自漂移的狀態。
 # 放在 config.py 而不是別處的關鍵理由:這個模組只 import os/re/pathlib,
 # CI 可以用一行 sed 抽出版本號對帳,不必先 pip install 整包相依。
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.9.1"
 
 DATA_DIR = Path(os.environ["GLOSSARY_DATA_DIR"]) if os.environ.get("GLOSSARY_DATA_DIR") else _default_data_dir()
 LOG_DIR = DATA_DIR / "logs"

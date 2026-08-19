@@ -27,6 +27,8 @@ The version number lives in `app/config.py` (`APP_VERSION`) and is shown in
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-20
+
 ### Fixed
 
 - **`pytest` works again when invoked as `pytest`.** `pytest.ini` had no
@@ -192,5 +194,6 @@ This entry describes the feature set as of 0.7.0 rather than replaying the commi
 - **Docker images** for `linux/amd64` and `linux/arm64` on
   `ghcr.io/diegochen-tw/jargon-vault`, plus a documented Synology NAS deployment.
 
-[Unreleased]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/diegochen-tw/jargon-vault/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/diegochen-tw/jargon-vault/releases/tag/v0.9.0

@@ -133,7 +133,7 @@ Multi-arch images (`linux/amd64` + `linux/arm64`) are published to
 pin a version instead of riding `latest`:
 
 ```bash
-GV_VERSION=0.9.0 docker compose -f docker-compose.ghcr.yml up -d
+GV_VERSION=0.9.1 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 ### Or build from source
