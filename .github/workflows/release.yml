@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90   # arm64 走 QEMU 模擬,第一次沒有 cache 時會慢
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ── 版本對帳:tag / app/config.py / CHANGELOG.md 三者一致才准往下走。 ──
       # image 一旦推上 ghcr 就沒辦法乾淨地收回,所以擋在 build 之前。
